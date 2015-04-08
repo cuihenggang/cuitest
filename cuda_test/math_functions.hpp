@@ -15,6 +15,10 @@ extern "C" {
 
 namespace caffe {
 
+inline void caffe_memset(const size_t N, const int alpha, void* X) {
+  memset(X, alpha, N);  // NOLINT(caffe/alt_fn)
+}
+
 // Decaf gpu gemm provides an interface that is almost the same as the cpu
 // gemm function - following the c convention and calling the fortran-order
 // gpu code under the hood.

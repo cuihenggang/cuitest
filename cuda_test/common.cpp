@@ -19,9 +19,15 @@ Caffe::Caffe()
     : cublas_handle_(NULL) {
   // Try to create a cublas handler, and report an error if failed (but we will
   // keep the program running as one might just want to run CPU code).
+  std::cout << "cublas_handle_ = " << cublas_handle_ << std::endl;
   if (cublasCreate(&cublas_handle_) != CUBLAS_STATUS_SUCCESS) {
     LOG(ERROR) << "Cannot create Cublas handle. Cublas won't be available.";
   }
+  std::cout << "handled created" << std::endl;
+  std::cout << "cublas_handle_ = " << cublas_handle_ << std::endl;
+  int version;
+  cublasGetVersion(cublas_handle_, &version);
+  std::cout << "version = " << version << std::endl;
 }
 
 Caffe::~Caffe() {

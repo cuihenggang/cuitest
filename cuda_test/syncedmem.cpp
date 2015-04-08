@@ -1,8 +1,8 @@
 #include <cstring>
 
-#include "caffe/common.hpp"
-#include "caffe/syncedmem.hpp"
-#include "caffe/util/math_functions.hpp"
+#include "common.hpp"
+#include "syncedmem.hpp"
+#include "math_functions.hpp"
 
 namespace caffe {
 

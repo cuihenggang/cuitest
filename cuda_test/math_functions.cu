@@ -109,12 +109,14 @@ void caffe_gpu_axpby<double>(const int N, const double alpha, const double* X,
 template <>
 void caffe_gpu_dot<float>(const int n, const float* x, const float* y,
     float* out) {
+  std::cout << "in caffe_gpu_dot<float>()\n";
   CUBLAS_CHECK(cublasSdot(Caffe::cublas_handle(), n, x, 1, y, 1, out));
 }
 
 template <>
 void caffe_gpu_dot<double>(const int n, const double* x, const double* y,
     double * out) {
+  std::cout << "in caffe_gpu_dot<double>()\n";
   CUBLAS_CHECK(cublasDdot(Caffe::cublas_handle(), n, x, 1, y, 1, out));
 }
 
@@ -304,6 +306,27 @@ void caffe_gpu_abs<double>(const int N, const double* a, double* y) {
 
 
 template <typename Dtype>
+__global__ void exp_kernel(const int n, const Dtype* a, Dtype* y) {
+  CUDA_KERNEL_LOOP(index, n) {
+    y[index] = exp(a[index]);
+  }
+}
+
+template <>
+void caffe_gpu_exp<float>(const int N, const float* a, float* y) {
+  // NOLINT_NEXT_LINE(whitespace/operators)
+  exp_kernel<float><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
+      N, a, y);
+}
+
+template <>
+void caffe_gpu_exp<double>(const int N, const double* a, double* y) {
+  // NOLINT_NEXT_LINE(whitespace/operators)
+  exp_kernel<double><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
+      N, a, y);
+}
+
+template <typename Dtype>
 __global__ void powx_kernel(const int n, const Dtype* a,
     const Dtype alpha, Dtype* y) {
   CUDA_KERNEL_LOOP(index, n) {
@@ -375,5 +398,6 @@ uint32_t caffe_gpu_hamming_distance<double>(const int n, const double* x,
                         /* NOLINT_NEXT_LINE(build/include_what_you_use) */
                         (uint32_t) 0, thrust::plus<uint32_t>());
 }
+\
 
 }  // namespace caffe
