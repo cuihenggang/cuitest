@@ -1,0 +1,33 @@
+git log
+commit 985207d4e17fe58e28bd8d310365fef3d13c45fb
+Author: Henggang Cui at susitna <hengganc@h0.ubuntu14.bi
+Date:   Wed Apr 8 13:12:44 2015 -0400
+
+    cuda test works
+
+Susitna, Ubuntu 14
+
+Results:
+Concurrent map takes 17.0935 seconds to initialize
+Unordered map takes 18.0624 seconds to initialize
+Map takes 18.8173 seconds to initialize
+Pair Concurrent map takes 15.8567 seconds to initialize
+Pair Unordered map takes 17.4798 seconds to initialize
+Pair Map takes 19.4049 seconds to initialize
+Vector tests zerofy: 0
+Vector takes 0.0746653 seconds to initialize
+Array takes 0.0433364 seconds to initialize
+Static array takes 1.07e-07 seconds to initialize
+Concurrent map takes 8.30025 seconds to update
+Unordered map takes 9.89066 seconds to update
+Map takes 4.52234 seconds to update
+Pair Concurrent map takes 8.40413 seconds to update
+Pair Unordered map takes 5.90385 seconds to update
+Pair Map takes 5.00265 seconds to update
+Vector takes 0.035224 seconds to update
+Array takes 0.0348016 seconds to update
+Static array takes 2.08e-07 seconds to update
+Concurrent map takes 19.2741 seconds to copy
+Unordered map takes 6.25412 seconds to copy
+Map takes 3.46662 seconds to copy
+Vector takes 0.1378 seconds to copy
