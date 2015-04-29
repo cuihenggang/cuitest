@@ -1,0 +1,18 @@
+# Configs
+data_file = /proj/BigLearning/hengganc/data/mlr_data/imagenet_llc/imnet.train.50.train
+ROW_DATA_SIZE = 21504
+val_t = float
+
+# Using synced mem and petuum's algebra functions
+predict_time = 3.68405
+outer_product_time = 6.87247
+make_y_time = 0.00020968
+dotproduct_time = 3.67802
+softmax_time = 0.0057963
+
+# Using caffe_cpu math functions
+predict_time = 3.37941
+outer_product_time = 7.68918
+make_y_time = 0.000156411
+dotproduct_time = 3.37347
+softmax_time = 0.00540422
