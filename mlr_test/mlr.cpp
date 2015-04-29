@@ -31,8 +31,9 @@ using std::istringstream;
 typedef uint32_t uint;
 
 #define ROW_DATA_SIZE 21504
+typedef float val_t;
 struct ArrayData {
-  double data[ROW_DATA_SIZE];
+  val_t data[ROW_DATA_SIZE];
   void init() {
     for (uint32_t i = 0; i < ROW_DATA_SIZE; i++) {
       data[i] = 0;
@@ -52,6 +53,11 @@ typedef ArrayData RowOpVal;
 
 #include "mlr-util.hpp"
 #include "metafile-reader.hpp"
+
+#include "syncedmem.hpp"
+// #include "math_functions.hpp"
+
+using caffe::SyncedMemory;
 
 class mlr_computer {
  public:
@@ -80,10 +86,16 @@ class mlr_computer {
 
   string inputfile_prefix_;
 
-  vector<RowData> train_features_;
+  // vector<RowData> train_features_;
+  // vector<int> train_labels_;
+  // vector<RowData> w_cache_mems_;
+  // vector<RowData> w_delta_mems_;
+
+  uint num_trains_;
+  vector<SyncedMemory *> train_feature_mems_;
   vector<int> train_labels_;
-  vector<RowData> w_cache_;
-  vector<RowData> w_delta_;
+  vector<SyncedMemory *> w_cache_mems_;
+  vector<SyncedMemory *> w_delta_mems_;
 
   double make_y_time;
   double predict_time;
@@ -139,22 +151,30 @@ class mlr_computer {
           &train_features_tmp, &train_labels_, feature_one_based_,
           label_one_based_, snappy_compressed_);
     }
-    train_features_.resize(train_features_tmp.size());
+
+    train_feature_mems_.resize(train_features_tmp.size());
+    uint num_row_bytes = ROW_DATA_SIZE * sizeof(val_t);
+    assert(feature_dim_ <= ROW_DATA_SIZE);
     for (uint i = 0; i < train_features_tmp.size(); i++) {
-      copy_vector_to_row_data(
-        train_features_[i], train_features_tmp[i], feature_dim_);
+      train_feature_mems_[i] = new SyncedMemory(num_row_bytes);
+      void *train_feature_mem_ptr = train_feature_mems_[i]->mutable_cpu_data();
+      memcpy(train_feature_mem_ptr, train_features_tmp[i].data(), feature_dim_ * sizeof(float));
     }
 
-    uint div = train_features_.size() / num_compobj_;
-    uint res = train_features_.size() % num_compobj_;
+    uint div = train_feature_mems_.size() / num_compobj_;
+    uint res = train_feature_mems_.size() % num_compobj_;
     batch_offset_ =
         div * compobj_rank_ + (res > compobj_rank_ ? compobj_rank_ : res);
     batch_size_ = div + (res > compobj_rank_ ? 1 : 0);
   }
 
   void initialize() {
-    w_cache_.resize(num_labels_);
-    w_delta_.resize(num_labels_);
+    w_cache_mems_.resize(num_labels_);
+    w_delta_mems_.resize(num_labels_);
+    for (uint i = 0; i < num_labels_; i++) {
+      w_cache_mems_[i] = new SyncedMemory(ROW_DATA_SIZE * sizeof(val_t));
+      w_delta_mems_[i] = new SyncedMemory(ROW_DATA_SIZE * sizeof(val_t));
+    }
 
     make_y_time = 0;
     predict_time = 0;
@@ -169,63 +189,54 @@ class mlr_computer {
 
   void change_weights() {
     // Zero delta.
-    for (uint i = 0; i < num_labels_; ++i) {
-      RowData& w_delta_i = w_delta_[i];
-      for (uint j = 0; j < feature_dim_; j++) {
-        w_delta_i.data[j] = 0;
-      }
-    }
+    // for (uint i = 0; i < num_labels_; ++i) {
+      // RowData& w_delta_i = w_delta_mems_[i];
+      // for (uint j = 0; j < feature_dim_; j++) {
+        // w_delta_i.data[j] = 0;
+      // }
+    // }
   }
 
-  uint ZeroOneLoss(const vector<float>& prediction, uint label) {
-    uint max_idx = 0;
-    float max_val = prediction[0];
-    for (uint i = 1; i < num_labels_; ++i) {
-      if (prediction[i] > max_val) {
-        max_val = prediction[i];
-        max_idx = i;
-      }
-    }
-    return (max_idx == label) ? 0 : 1;
-  }
-
-  float CrossEntropyLoss(const vector<float>& prediction, uint label) {
-    // CHECK_LE(prediction[label], 1);
-    return SafeLog(prediction[label]);
-  }
-
-  vector<float> Predict(RowData& feature) {
+  void Predict(vector<float> &y_vec, SyncedMemory *feature_mem) {
     tbb::tick_count make_y_start = tbb::tick_count::now();
-    vector<float> y_vec(num_labels_);
+    y_vec.resize(num_labels_);
     tbb::tick_count make_y_end = tbb::tick_count::now();
     make_y_time += (make_y_end - make_y_start).seconds();
 
     for (uint i = 0; i < num_labels_; ++i) {
       y_vec[i] =
-        DenseDenseFeatureDotProduct(feature, w_cache_[i], feature_dim_);
+        DenseDenseFeatureDotProduct(
+          reinterpret_cast<const float *>(feature_mem->cpu_data()),
+          reinterpret_cast<const float *>(w_cache_mems_[i]->cpu_data()),
+          feature_dim_);
     }
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - make_y_end).seconds();
     
     Softmax(&y_vec);
     softmax_time += (tbb::tick_count::now() - dotproduct_end).seconds();
-    return y_vec;
   }
 
-  void SingleDataSGD(RowData& feature, uint label, float learning_rate) {
+  void SingleDataSGD(SyncedMemory *feature_mem, uint label, float learning_rate) {
     tbb::tick_count predict_start = tbb::tick_count::now();
-    vector<float> y_vec = Predict(feature);
+    vector<float> y_vec;
+    Predict(y_vec, feature_mem);
     y_vec[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
     tbb::tick_count predict_end = tbb::tick_count::now();
     predict_time += (predict_end - predict_start).seconds();
 
     // outer product
     for (uint i = 0; i < num_labels_; ++i) {
-      // w_cache_[i] += -\eta * y_vec[i] * feature
+      // w_cache_mems_[i] += -\eta * y_vec[i] * feature
       FeatureScaleAndAdd(
-        -learning_rate * y_vec[i], feature, w_cache_[i], feature_dim_);
+        -learning_rate * y_vec[i],
+        reinterpret_cast<const float *>(feature_mem->cpu_data()),
+        reinterpret_cast<float *>(w_cache_mems_[i]->mutable_cpu_data()),
+        feature_dim_);
       FeatureScaleAndAdd(
-        -learning_rate * y_vec[i], feature, w_delta_[i], feature_dim_);
+        -learning_rate * y_vec[i],
+        reinterpret_cast<const float *>(feature_mem->cpu_data()),
+        reinterpret_cast<float *>(w_delta_mems_[i]->mutable_cpu_data()), feature_dim_);
     }
     outer_product_time +=
       (tbb::tick_count::now() - predict_end).seconds();
@@ -236,7 +247,7 @@ class mlr_computer {
 
     float curr_learning_rate = learning_rate_ * pow(decay_rate_, cur_clock_);
     for (uint i = batch_offset_; i < batch_offset_ + batch_size_; i++) {
-      SingleDataSGD(train_features_[i], train_labels_[i], curr_learning_rate);
+      SingleDataSGD(train_feature_mems_[i], train_labels_[i], curr_learning_rate);
     }
 
     change_weights();

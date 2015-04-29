@@ -4,7 +4,7 @@
 #include <cstdlib>
 
 #include "common.hpp"
-#include "math_functions.hpp"
+// #include "math_functions.hpp"
 
 namespace caffe {
 

@@ -229,20 +229,36 @@ void ReadDataLabelLibSVM(const std::string& filename,
     // << " data instances but only " << i << " found in " << filename;
 }
 
+void FeatureScaleAndAdd(
+    float alpha, const float *v1, float *v2, uint size) {
+  for (uint i = 0; i < size; ++i) {
+    v2[i] += alpha * v1[i];
+  }
+}
+
 float DenseDenseFeatureDotProduct(
+    const float *v1, const float *v2, uint size) {
+  float sum = 0.;
+  for (uint i = 0; i < size; ++i) {
+    sum += v1[i] * v2[i];
+  }
+  return sum;
+}
+
+void FeatureScaleAndAdd2(
+    float alpha, const RowData& v1, RowData& v2, uint size) {
+  for (uint i = 0; i < size; ++i) {
+    v2.data[i] += alpha * v1.data[i];
+  }
+}
+
+float DenseDenseFeatureDotProduct2(
     const RowData& v1, const RowData& v2, uint size) {
   float sum = 0.;
   for (uint i = 0; i < size; ++i) {
     sum += v1.data[i] * v2.data[i];
   }
   return sum;
-}
-
-void FeatureScaleAndAdd(
-    float alpha, const RowData& v1, RowData& v2, uint size) {
-  for (uint i = 0; i < size; ++i) {
-    v2.data[i] += alpha * v1.data[i];
-  }
 }
 
 void copy_vector_to_row_data(

@@ -72,6 +72,10 @@ const int kColIdxOutputTableLoss = 2;
 // Currently it initializes google flags and google logging.
 void GlobalInit(int* pargc, char*** pargv);
 
+inline void caffe_memset(const size_t N, const int alpha, void* X) {
+  memset(X, alpha, N);  // NOLINT(caffe/alt_fn)
+}
+
 // A singleton class to hold common caffe stuff, such as the handler that
 // caffe is going to use for cublas, curand, etc.
 class Caffe {
@@ -84,7 +88,9 @@ class Caffe {
     return *singleton_;
   }
 
+#ifndef CPU_ONLY
   inline static cublasHandle_t cublas_handle() { return Get().cublas_handle_; }
+#endif
 
   // Sets the device. Since we have cublas and curand stuff, set device also
   // requires us to reset those values.
@@ -93,7 +99,10 @@ class Caffe {
   static void DeviceQuery();
 
  protected:
+
+#ifndef CPU_ONLY
   cublasHandle_t cublas_handle_;
+#endif
 
   static shared_ptr<Caffe> singleton_;
 
