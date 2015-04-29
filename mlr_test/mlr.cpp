@@ -55,7 +55,7 @@ typedef ArrayData RowOpVal;
 #include "metafile-reader.hpp"
 
 #include "syncedmem.hpp"
-// #include "math_functions.hpp"
+#include "math_functions.hpp"
 
 using caffe::SyncedMemory;
 
@@ -204,11 +204,14 @@ class mlr_computer {
     make_y_time += (make_y_end - make_y_start).seconds();
 
     for (uint i = 0; i < num_labels_; ++i) {
-      y_vec[i] =
-        DenseDenseFeatureDotProduct(
-          reinterpret_cast<const float *>(feature_mem->cpu_data()),
-          reinterpret_cast<const float *>(w_cache_mems_[i]->cpu_data()),
-          feature_dim_);
+      // y_vec[i] = DenseDenseFeatureDotProduct(
+        // reinterpret_cast<const float *>(feature_mem->cpu_data()),
+        // reinterpret_cast<const float *>(w_cache_mems_[i]->cpu_data()),
+        // feature_dim_);
+      y_vec[i] = caffe::caffe_cpu_dot<float>(
+        feature_dim_,
+        reinterpret_cast<const float *>(feature_mem->cpu_data()),
+        reinterpret_cast<const float *>(w_cache_mems_[i]->cpu_data()));
     }
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - make_y_end).seconds();
@@ -228,15 +231,26 @@ class mlr_computer {
     // outer product
     for (uint i = 0; i < num_labels_; ++i) {
       // w_cache_mems_[i] += -\eta * y_vec[i] * feature
-      FeatureScaleAndAdd(
+      // FeatureScaleAndAdd(
+        // -learning_rate * y_vec[i],
+        // reinterpret_cast<const float *>(feature_mem->cpu_data()),
+        // reinterpret_cast<float *>(w_cache_mems_[i]->mutable_cpu_data()),
+        // feature_dim_);
+      // FeatureScaleAndAdd(
+        // -learning_rate * y_vec[i],
+        // reinterpret_cast<const float *>(feature_mem->cpu_data()),
+        // reinterpret_cast<float *>(w_delta_mems_[i]->mutable_cpu_data()),
+        // feature_dim_);
+      caffe::caffe_axpy<float>(
+        feature_dim_,
         -learning_rate * y_vec[i],
         reinterpret_cast<const float *>(feature_mem->cpu_data()),
-        reinterpret_cast<float *>(w_cache_mems_[i]->mutable_cpu_data()),
-        feature_dim_);
-      FeatureScaleAndAdd(
+        reinterpret_cast<float *>(w_cache_mems_[i]->mutable_cpu_data()));
+      caffe::caffe_axpy<float>(
+        feature_dim_,
         -learning_rate * y_vec[i],
         reinterpret_cast<const float *>(feature_mem->cpu_data()),
-        reinterpret_cast<float *>(w_delta_mems_[i]->mutable_cpu_data()), feature_dim_);
+        reinterpret_cast<float *>(w_delta_mems_[i]->mutable_cpu_data()));
     }
     outer_product_time +=
       (tbb::tick_count::now() - predict_end).seconds();
