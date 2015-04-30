@@ -182,10 +182,7 @@ class mlr_computer {
   }
 
   void refresh_weights() {
-    float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_cpu_data());
-    float *w_delta = reinterpret_cast<float *>(w_delta_mem_->mutable_cpu_data());
-    caffe::caffe_set<float>(num_labels_ * ROW_DATA_SIZE, 0, w_cache);
-    caffe::caffe_set<float>(num_labels_ * ROW_DATA_SIZE, 0, w_delta);
+
   }
 
   void change_weights() {
