@@ -182,17 +182,19 @@ class mlr_computer {
   }
 
   void refresh_weights() {
-
+    float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_cpu_data());
+    float *w_delta = reinterpret_cast<float *>(w_delta_mem_->mutable_cpu_data());
+    caffe::caffe_set<float>(num_labels_ * ROW_DATA_SIZE, 0, w_cache);
+    caffe::caffe_set<float>(num_labels_ * ROW_DATA_SIZE, 0, w_delta);
   }
 
   void change_weights() {
-    // Zero delta.
-    // for (uint i = 0; i < num_labels_; ++i) {
-      // RowData& w_delta_i = w_delta_mems_[i];
-      // for (uint j = 0; j < feature_dim_; j++) {
-        // w_delta_i.data[j] = 0;
-      // }
-    // }
+    float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_cpu_data());
+    float count = 0.0;
+    for (uint i = 0; i < num_labels_ * ROW_DATA_SIZE; i++) {
+      count += w_cache[i];
+    }
+    cout << "count = " << count << endl;
   }
 
   void Predict(float *y, float *feature, float *w_cache) {
