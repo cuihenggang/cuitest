@@ -91,11 +91,11 @@ class mlr_computer {
   // vector<RowData> w_cache_mems_;
   // vector<RowData> w_delta_mems_;
 
-  uint num_trains_;
+  uint w_row_size_;
   vector<SyncedMemory *> train_feature_mems_;
   vector<int> train_labels_;
-  vector<SyncedMemory *> w_cache_mems_;
-  vector<SyncedMemory *> w_delta_mems_;
+  SyncedMemory *w_cache_mem_;
+  SyncedMemory *w_delta_mem_;
 
   double make_y_time;
   double predict_time;
@@ -169,12 +169,10 @@ class mlr_computer {
   }
 
   void initialize() {
-    w_cache_mems_.resize(num_labels_);
-    w_delta_mems_.resize(num_labels_);
-    for (uint i = 0; i < num_labels_; i++) {
-      w_cache_mems_[i] = new SyncedMemory(ROW_DATA_SIZE * sizeof(val_t));
-      w_delta_mems_[i] = new SyncedMemory(ROW_DATA_SIZE * sizeof(val_t));
-    }
+    w_row_size_ = ROW_DATA_SIZE * sizeof(val_t);
+    uint w_mem_size = num_labels_ * w_row_size_;
+    w_cache_mem_ = new SyncedMemory(w_mem_size);
+    w_delta_mem_ = new SyncedMemory(w_mem_size);
 
     make_y_time = 0;
     predict_time = 0;
@@ -197,32 +195,32 @@ class mlr_computer {
     // }
   }
 
-  void Predict(SyncedMemory *y_mem, SyncedMemory *feature_mem) {
+  void Predict(float *y, float *feature, float *w_cache) {
     tbb::tick_count make_y_end = tbb::tick_count::now();
-    float *y_vec = reinterpret_cast<float *>(y_mem->mutable_cpu_data());
     for (uint i = 0; i < num_labels_; ++i) {
       // y_vec[i] = DenseDenseFeatureDotProduct(
         // reinterpret_cast<const float *>(feature_mem->cpu_data()),
         // reinterpret_cast<const float *>(w_cache_mems_[i]->cpu_data()),
         // feature_dim_);
-      y_vec[i] = caffe::caffe_cpu_dot<float>(
-        feature_dim_,
-        reinterpret_cast<const float *>(feature_mem->cpu_data()),
-        reinterpret_cast<const float *>(w_cache_mems_[i]->cpu_data()));
+      float *w_cache_i = &(w_cache[i * ROW_DATA_SIZE]);
+      y[i] = caffe::caffe_cpu_dot<float>(feature_dim_, feature, w_cache_i);
     }
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - make_y_end).seconds();
     
-    Softmax(y_vec, num_labels_);
+    Softmax(y, num_labels_);
     softmax_time += (tbb::tick_count::now() - dotproduct_end).seconds();
   }
 
   void SingleDataSGD(SyncedMemory *feature_mem, uint label, float learning_rate) {
     tbb::tick_count predict_start = tbb::tick_count::now();
     SyncedMemory y_mem(num_labels_ * sizeof(float));
-    Predict(&y_mem, feature_mem);
-    float *y_vec = reinterpret_cast<float *>(y_mem.mutable_cpu_data());
-    y_vec[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+    float *y = reinterpret_cast<float *>(y_mem.mutable_cpu_data());
+    float *feature = reinterpret_cast<float *>(feature_mem->mutable_cpu_data());
+    float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_cpu_data());
+    float *w_delta = reinterpret_cast<float *>(w_delta_mem_->mutable_cpu_data());
+    Predict(y, feature, w_cache);
+    y[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
     tbb::tick_count predict_end = tbb::tick_count::now();
     predict_time += (predict_end - predict_start).seconds();
 
@@ -239,16 +237,10 @@ class mlr_computer {
         // reinterpret_cast<const float *>(feature_mem->cpu_data()),
         // reinterpret_cast<float *>(w_delta_mems_[i]->mutable_cpu_data()),
         // feature_dim_);
-      caffe::caffe_axpy<float>(
-        feature_dim_,
-        -learning_rate * y_vec[i],
-        reinterpret_cast<const float *>(feature_mem->cpu_data()),
-        reinterpret_cast<float *>(w_cache_mems_[i]->mutable_cpu_data()));
-      caffe::caffe_axpy<float>(
-        feature_dim_,
-        -learning_rate * y_vec[i],
-        reinterpret_cast<const float *>(feature_mem->cpu_data()),
-        reinterpret_cast<float *>(w_delta_mems_[i]->mutable_cpu_data()));
+      float *w_cache_i = &(w_cache[i * ROW_DATA_SIZE]);
+      float *w_delta_i = &(w_delta[i * ROW_DATA_SIZE]);
+      caffe::caffe_axpy<float>(feature_dim_, -learning_rate * y[i], feature, w_cache_i);
+      caffe::caffe_axpy<float>(feature_dim_, -learning_rate * y[i], feature, w_delta_i);
     }
     outer_product_time +=
       (tbb::tick_count::now() - predict_end).seconds();
