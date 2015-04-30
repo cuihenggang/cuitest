@@ -32,3 +32,11 @@ outer_product_time = 5.87122
 make_y_time = 0
 dotproduct_time = 1.65388
 softmax_time = 0.00566509
+
+# Use matrix multiplication for outer product
+count = -3.58524
+predict_time = 1.72748
+outer_product_time = 5.71182
+make_y_time = 0
+dotproduct_time = 1.60817
+softmax_time = 0.00532832

@@ -213,23 +213,12 @@ class mlr_computer {
     predict_time += (predict_end - predict_start).seconds();
 
     // outer product
-    for (uint i = 0; i < num_labels_; ++i) {
-      // w_cache_mems_[i] += -\eta * y_vec[i] * feature
-      // FeatureScaleAndAdd(
-        // -learning_rate * y_vec[i],
-        // reinterpret_cast<const float *>(feature_mem->cpu_data()),
-        // reinterpret_cast<float *>(w_cache_mems_[i]->mutable_cpu_data()),
-        // feature_dim_);
-      // FeatureScaleAndAdd(
-        // -learning_rate * y_vec[i],
-        // reinterpret_cast<const float *>(feature_mem->cpu_data()),
-        // reinterpret_cast<float *>(w_delta_mems_[i]->mutable_cpu_data()),
-        // feature_dim_);
-      float *w_cache_i = &(w_cache[i * ROW_DATA_SIZE]);
-      float *w_delta_i = &(w_delta[i * ROW_DATA_SIZE]);
-      caffe::caffe_axpy<float>(feature_dim_, -learning_rate * y[i], feature, w_cache_i);
-      caffe::caffe_axpy<float>(feature_dim_, -learning_rate * y[i], feature, w_delta_i);
-    }
+    caffe::caffe_cpu_gemm<float>(
+      CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
+      -learning_rate, y, feature, 1, w_cache);
+    caffe::caffe_cpu_gemm<float>(
+      CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
+      -learning_rate, y, feature, 1, w_delta);
     outer_product_time +=
       (tbb::tick_count::now() - predict_end).seconds();
   }
