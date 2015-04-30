@@ -86,11 +86,6 @@ class mlr_computer {
 
   string inputfile_prefix_;
 
-  // vector<RowData> train_features_;
-  // vector<int> train_labels_;
-  // vector<RowData> w_cache_mems_;
-  // vector<RowData> w_delta_mems_;
-
   uint w_row_size_;
   vector<SyncedMemory *> train_feature_mems_;
   vector<int> train_labels_;
@@ -197,7 +192,7 @@ class mlr_computer {
   void Predict(float *y, float *feature, float *w_cache) {
     tbb::tick_count make_y_end = tbb::tick_count::now();
     caffe::caffe_cpu_gemv<float>(
-      CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 1, y);
+      CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - make_y_end).seconds();
     
