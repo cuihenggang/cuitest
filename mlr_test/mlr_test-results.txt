@@ -16,3 +16,17 @@ outer_product_time = 7.68918
 make_y_time = 0.000156411
 dotproduct_time = 3.37347
 softmax_time = 0.00540422
+
+# Represent w_cache and w_delta as single SyncedMemories
+predict_time = 3.26017
+outer_product_time = 5.73572
+make_y_time = 0
+dotproduct_time = 3.13884
+softmax_time = 0.00575641
+
+# Replace dot product with matrix multiplication
+predict_time = 1.77308
+outer_product_time = 5.87122
+make_y_time = 0
+dotproduct_time = 1.65388
+softmax_time = 0.00566509

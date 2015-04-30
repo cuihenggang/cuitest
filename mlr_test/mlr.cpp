@@ -197,14 +197,8 @@ class mlr_computer {
 
   void Predict(float *y, float *feature, float *w_cache) {
     tbb::tick_count make_y_end = tbb::tick_count::now();
-    for (uint i = 0; i < num_labels_; ++i) {
-      // y_vec[i] = DenseDenseFeatureDotProduct(
-        // reinterpret_cast<const float *>(feature_mem->cpu_data()),
-        // reinterpret_cast<const float *>(w_cache_mems_[i]->cpu_data()),
-        // feature_dim_);
-      float *w_cache_i = &(w_cache[i * ROW_DATA_SIZE]);
-      y[i] = caffe::caffe_cpu_dot<float>(feature_dim_, feature, w_cache_i);
-    }
+    caffe::caffe_cpu_gemv<float>(
+      CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 1, y);
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - make_y_end).seconds();
     
