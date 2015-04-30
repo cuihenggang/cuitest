@@ -4,6 +4,7 @@ ROW_DATA_SIZE = 21504
 val_t = float
 
 # Using synced mem and petuum's algebra functions
+count = -3.58519
 predict_time = 3.68405
 outer_product_time = 6.87247
 make_y_time = 0.00020968
