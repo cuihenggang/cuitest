@@ -61,11 +61,36 @@ void Softmax(std::vector<float>* vec) {
 			(*vec)[i] = kCutoff;
     }
 	}
-	double lsum = LogSumVec(*vec);
+	float lsum = LogSumVec(*vec);
 	for (uint i = 0; i < vec->size(); ++i) {
 		(*vec)[i] = fastexp((*vec)[i] - lsum);
 		//(*vec)[i] = exp((*vec)[i] - lsum);
     (*vec)[i] = (*vec)[i] > 1 ? 1. : (*vec)[i];
+  }
+}
+
+float LogSumVec(const float *logvec, size_t size) {
+	float sum = 0.;
+	sum = logvec[0];
+	for (uint i = 1; i < size; ++i) {
+		sum = LogSum(sum, logvec[i]);
+	}
+	return sum;
+}
+
+void Softmax(float *vec, size_t size) {
+  // CHECK_NOTNULL(vec);
+  // TODO(wdai): Figure out why this is necessary. Doubt it is.
+	for (uint i = 0; i < size; ++i) {
+		if (std::abs(vec[i]) < kCutoff) {
+			vec[i] = kCutoff;
+    }
+	}
+	float lsum = LogSumVec(vec, size);
+	for (uint i = 0; i < size; ++i) {
+		vec[i] = fastexp(vec[i] - lsum);
+		//(*vec)[i] = exp((*vec)[i] - lsum);
+    vec[i] = vec[i] > 1 ? 1. : vec[i];
   }
 }
 

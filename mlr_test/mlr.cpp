@@ -197,12 +197,9 @@ class mlr_computer {
     // }
   }
 
-  void Predict(vector<float> &y_vec, SyncedMemory *feature_mem) {
-    tbb::tick_count make_y_start = tbb::tick_count::now();
-    y_vec.resize(num_labels_);
+  void Predict(SyncedMemory *y_mem, SyncedMemory *feature_mem) {
     tbb::tick_count make_y_end = tbb::tick_count::now();
-    make_y_time += (make_y_end - make_y_start).seconds();
-
+    float *y_vec = reinterpret_cast<float *>(y_mem->mutable_cpu_data());
     for (uint i = 0; i < num_labels_; ++i) {
       // y_vec[i] = DenseDenseFeatureDotProduct(
         // reinterpret_cast<const float *>(feature_mem->cpu_data()),
@@ -216,14 +213,15 @@ class mlr_computer {
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - make_y_end).seconds();
     
-    Softmax(&y_vec);
+    Softmax(y_vec, num_labels_);
     softmax_time += (tbb::tick_count::now() - dotproduct_end).seconds();
   }
 
   void SingleDataSGD(SyncedMemory *feature_mem, uint label, float learning_rate) {
     tbb::tick_count predict_start = tbb::tick_count::now();
-    vector<float> y_vec;
-    Predict(y_vec, feature_mem);
+    SyncedMemory y_mem(num_labels_ * sizeof(float));
+    Predict(&y_mem, feature_mem);
+    float *y_vec = reinterpret_cast<float *>(y_mem.mutable_cpu_data());
     y_vec[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
     tbb::tick_count predict_end = tbb::tick_count::now();
     predict_time += (predict_end - predict_start).seconds();
