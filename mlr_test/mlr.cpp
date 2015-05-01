@@ -240,7 +240,8 @@ int main(int argc, char* argv[]) {
   mlr_computer computer;
 
   /* Read data */
-  string data_file = "/proj/BigLearning/hengganc/data/mlr_data/imagenet_llc/imnet.train.50.train";
+  // string data_file = "/proj/BigLearning/hengganc/data/mlr_data/imagenet_llc/imnet.train.50.train";
+  string data_file = "/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.50.train";
   computer.read_data(data_file);
 
   /* Set initial values */

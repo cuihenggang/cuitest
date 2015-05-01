@@ -3,7 +3,7 @@ data_file = /proj/BigLearning/hengganc/data/mlr_data/imagenet_llc/imnet.train.50
 ROW_DATA_SIZE = 21504
 val_t = float
 
-# Using synced mem and petuum's algebra functions
+# Nome: Using synced mem and petuum's algebra functions
 count = -3.58519
 predict_time = 3.68405
 outer_product_time = 6.87247
@@ -11,21 +11,21 @@ make_y_time = 0.00020968
 dotproduct_time = 3.67802
 softmax_time = 0.0057963
 
-# Using caffe_cpu math functions
+# Nome: Using caffe_cpu math functions
 predict_time = 3.37941
 outer_product_time = 7.68918
 make_y_time = 0.000156411
 dotproduct_time = 3.37347
 softmax_time = 0.00540422
 
-# Represent w_cache and w_delta as single SyncedMemories
+# Nome: Represent w_cache and w_delta as single SyncedMemories
 predict_time = 3.26017
 outer_product_time = 5.73572
 make_y_time = 0
 dotproduct_time = 3.13884
 softmax_time = 0.00575641
 
-# Replace dot product with matrix multiplication
+# Nome: Replace dot product with matrix multiplication
 count = -3.58526
 predict_time = 1.77308
 outer_product_time = 5.87122
@@ -33,10 +33,18 @@ make_y_time = 0
 dotproduct_time = 1.65388
 softmax_time = 0.00566509
 
-# Use matrix multiplication for outer product
+# Nome: Use matrix multiplication for outer product
 count = -3.58524
 predict_time = 1.72748
 outer_product_time = 5.71182
 make_y_time = 0
 dotproduct_time = 1.60817
 softmax_time = 0.00532832
+
+# Susitna: caffe CPU math functions
+count = -3.58524
+predict_time = 0.864054
+outer_product_time = 4.85773
+make_y_time = 0
+dotproduct_time = 0.812473
+softmax_time = 0.00417769
