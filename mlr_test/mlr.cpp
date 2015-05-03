@@ -191,7 +191,7 @@ class mlr_computer {
 
   void Predict(float *y, float *feature, float *w_cache) {
     tbb::tick_count make_y_end = tbb::tick_count::now();
-#if defined(CPU_ONLY)
+#if defined(CPU_WORKER)
     caffe::caffe_cpu_gemv<float>(
 #else
     caffe::caffe_gpu_gemv<float>(
