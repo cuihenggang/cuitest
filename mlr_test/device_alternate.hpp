@@ -1,6 +1,8 @@
 #ifndef CAFFE_UTIL_DEVICE_ALTERNATE_H_
 #define CAFFE_UTIL_DEVICE_ALTERNATE_H_
 
+#define NO_GPU LOG(FATAL) << "CPU-only Mode: cannot make GPU call."
+
 #ifndef CPU_ONLY  // Normal GPU + CPU Caffe.
 
 #include <cublas_v2.h>

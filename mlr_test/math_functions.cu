@@ -1,3 +1,5 @@
+#ifndef CPU_ONLY
+
 #include <math_functions.h>  // CUDA's, not caffe's, for fabs, signbit
 #include <thrust/device_vector.h>
 #include <thrust/functional.h>  // thrust::plus
@@ -401,3 +403,4 @@ uint32_t caffe_gpu_hamming_distance<double>(const int n, const double* x,
 \
 
 }  // namespace caffe
+#endif
