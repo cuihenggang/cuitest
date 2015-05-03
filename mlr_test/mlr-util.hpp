@@ -15,6 +15,7 @@
 
 // #include <glog/logging.h>
 
+#include "lazytable-types.hpp"
 #include "fastapprox/fastapprox.hpp"
 
 using std::string;
@@ -27,17 +28,9 @@ using boost::shared_ptr;
 
 typedef uint32_t uint;
 
-
-const float kCutoff = 1e-15;
+#define kCutoff 1e-15
 
 const int32_t base = 10;
-
-float SafeLog(float x) {
-  if (std::abs(x) < kCutoff) {
-    x = kCutoff;
-  }
-  return fastlog(x);
-}
 
 float LogSum(float log_a, float log_b) {
   return (log_a < log_b) ? log_b + fastlog(1 + fastexp(log_a - log_b)) :

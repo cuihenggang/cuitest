@@ -22,6 +22,13 @@
 
 // #include <glog/logging.h>
 
+#include "syncedmem.hpp"
+#include "math_functions.hpp"
+
+#include "lazytable-types.hpp"
+#include "mlr-util.hpp"
+#include "metafile-reader.hpp"
+
 using std::string;
 using std::cout;
 using std::cerr;
@@ -30,34 +37,16 @@ using std::istringstream;
 
 typedef uint32_t uint;
 
-#define ROW_DATA_SIZE 21504
-typedef float val_t;
-struct ArrayData {
-  val_t data[ROW_DATA_SIZE];
-  void init() {
-    for (uint32_t i = 0; i < ROW_DATA_SIZE; i++) {
-      data[i] = 0;
-    }
-  }
-  ArrayData() {
-    init();
-  }
-  template<class Archive>
-  void serialize(Archive & ar, const unsigned int version) {
-    ar & data;
-  }
-};
-typedef ArrayData RowData;
-typedef ArrayData RowOpVal;
-
-
-#include "mlr-util.hpp"
-#include "metafile-reader.hpp"
-
-#include "syncedmem.hpp"
-#include "math_functions.hpp"
-
 using caffe::SyncedMemory;
+
+#if !defined(CPU_ONLY)
+void SoftmaxAndAdjust_gpu(float *vec, size_t size, uint label);
+#endif
+
+void SoftmaxAndAdjust(float *vec, size_t size, uint label) {
+  Softmax(vec, size);
+  vec[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+}
 
 class mlr_computer {
  public:
@@ -231,13 +220,10 @@ class mlr_computer {
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - predict_start).seconds();
 
-#if !defined(CPU_WORKER)
-    y = reinterpret_cast<val_t *>(y_mem_->mutable_cpu_data());
-#endif
-    Softmax(y, num_labels_);
-    y[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
-#if !defined(CPU_WORKER)
-    y = reinterpret_cast<val_t *>(y_mem_->mutable_gpu_data());
+#if defined(CPU_WORKER)
+    SoftmaxAndAdjust(y, num_labels_, label);
+#else
+    SoftmaxAndAdjust_gpu(y, num_labels_, label);
 #endif
     tbb::tick_count softmax_end = tbb::tick_count::now();
     softmax_time += (softmax_end - dotproduct_end).seconds();
