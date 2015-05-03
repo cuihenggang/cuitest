@@ -206,21 +206,6 @@ class mlr_computer {
     cout << "count = " << count << endl;
   }
 
-  void Predict(val_t *y, val_t *feature, val_t *w_cache) {
-    tbb::tick_count make_y_end = tbb::tick_count::now();
-#if defined(CPU_WORKER)
-    caffe::caffe_cpu_gemv<val_t>(
-#else
-    caffe::caffe_gpu_gemv<val_t>(
-#endif
-      CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
-    tbb::tick_count dotproduct_end = tbb::tick_count::now();
-    dotproduct_time += (dotproduct_end - make_y_end).seconds();
-    
-    // Softmax(y, num_labels_);
-    softmax_time += (tbb::tick_count::now() - dotproduct_end).seconds();
-  }
-
   void SingleDataSGD(SyncedMemory *feature_mem, uint label, val_t learning_rate) {
     tbb::tick_count alloc_mem_start = tbb::tick_count::now();
 #if defined(CPU_WORKER)
@@ -237,10 +222,25 @@ class mlr_computer {
     tbb::tick_count predict_start = tbb::tick_count::now();
     alloc_mem_time += (predict_start - alloc_mem_start).seconds();
 
-    Predict(y, feature, w_cache);
-    // y[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
-    tbb::tick_count predict_end = tbb::tick_count::now();
-    predict_time += (predict_end - predict_start).seconds();
+#if defined(CPU_WORKER)
+    caffe::caffe_cpu_gemv<val_t>(
+#else
+    caffe::caffe_gpu_gemv<val_t>(
+#endif
+      CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
+    tbb::tick_count dotproduct_end = tbb::tick_count::now();
+    dotproduct_time += (dotproduct_end - predict_start).seconds();
+
+#if !defined(CPU_WORKER)
+    y = reinterpret_cast<val_t *>(y_mem_->mutable_cpu_data());
+#endif
+    Softmax(y, num_labels_);
+    y[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+#if !defined(CPU_WORKER)
+    y = reinterpret_cast<val_t *>(y_mem_->mutable_gpu_data());
+#endif
+    tbb::tick_count softmax_end = tbb::tick_count::now();
+    softmax_time += (softmax_end - dotproduct_end).seconds();
 
     // outer product
 #if defined(CPU_WORKER)
@@ -258,7 +258,7 @@ class mlr_computer {
       CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
       -learning_rate, y, feature, 1, w_delta);
     outer_product_time +=
-      (tbb::tick_count::now() - predict_end).seconds();
+      (tbb::tick_count::now() - softmax_end).seconds();
   }
 
   void compute() {
@@ -291,8 +291,7 @@ int main(int argc, char* argv[]) {
   }
 
   cout << "alloc_mem_time = " << computer.alloc_mem_time << endl;
-  cout << "predict_time = " << computer.predict_time << endl;
-  cout << "outer_product_time = " << computer.outer_product_time << endl;
   cout << "dotproduct_time = " << computer.dotproduct_time << endl;
   cout << "softmax_time = " << computer.softmax_time << endl;
+  cout << "outer_product_time = " << computer.outer_product_time << endl;
 }

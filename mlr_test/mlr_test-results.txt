@@ -66,3 +66,18 @@ dotproduct_time = 0.159291
 softmax_time = 6.625e-06
 35.6x faster without alloc_mem_time
 3x faster with alloc_mem_time
+
+# Susitna: caffe CPU, do softmax and y_vec adjustment
+count = -3.58524
+alloc_mem_time = 2.1463e-05
+dotproduct_time = 0.819699
+softmax_time = 0.00416522
+outer_product_time = 4.85702
+
+# Susitna: caffe GPU, do softmax and y_vec adjustment by moving data back to CPU
+count = -3.58524
+alloc_mem_time = 8.447e-06
+dotproduct_time = 0.1564
+softmax_time = 0.177294
+outer_product_time = 0.000595494
+17x speed up
