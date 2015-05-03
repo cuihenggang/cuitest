@@ -91,6 +91,7 @@ class mlr_computer {
   vector<int> train_labels_;
   SyncedMemory *w_cache_mem_;
   SyncedMemory *w_delta_mem_;
+  SyncedMemory *y_mem_;
 
   double alloc_mem_time;
   double predict_time;
@@ -153,7 +154,7 @@ class mlr_computer {
     for (uint i = 0; i < train_features_tmp.size(); i++) {
       train_feature_mems_[i] = new SyncedMemory(num_row_bytes);
       void *train_feature_mem_ptr = train_feature_mems_[i]->mutable_cpu_data();
-      memcpy(train_feature_mem_ptr, train_features_tmp[i].data(), feature_dim_ * sizeof(float));
+      memcpy(train_feature_mem_ptr, train_features_tmp[i].data(), feature_dim_ * sizeof(val_t));
     }
 
     uint div = train_feature_mems_.size() / num_compobj_;
@@ -168,6 +169,7 @@ class mlr_computer {
     uint w_mem_size = num_labels_ * w_row_size_;
     w_cache_mem_ = new SyncedMemory(w_mem_size);
     w_delta_mem_ = new SyncedMemory(w_mem_size);
+    y_mem_ = new SyncedMemory(num_labels_ * sizeof(val_t));
 
     alloc_mem_time = 0;
     predict_time = 0;
@@ -181,20 +183,20 @@ class mlr_computer {
   }
 
   void change_weights() {
-    float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_cpu_data());
-    float count = 0.0;
+    val_t *w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_cpu_data());
+    val_t count = 0.0;
     for (uint i = 0; i < num_labels_ * ROW_DATA_SIZE; i++) {
       count += w_cache[i];
     }
     cout << "count = " << count << endl;
   }
 
-  void Predict(float *y, float *feature, float *w_cache) {
+  void Predict(val_t *y, val_t *feature, val_t *w_cache) {
     tbb::tick_count make_y_end = tbb::tick_count::now();
 #if defined(CPU_WORKER)
-    caffe::caffe_cpu_gemv<float>(
+    caffe::caffe_cpu_gemv<val_t>(
 #else
-    caffe::caffe_gpu_gemv<float>(
+    caffe::caffe_gpu_gemv<val_t>(
 #endif
       CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
@@ -204,19 +206,18 @@ class mlr_computer {
     softmax_time += (tbb::tick_count::now() - dotproduct_end).seconds();
   }
 
-  void SingleDataSGD(SyncedMemory *feature_mem, uint label, float learning_rate) {
+  void SingleDataSGD(SyncedMemory *feature_mem, uint label, val_t learning_rate) {
     tbb::tick_count alloc_mem_start = tbb::tick_count::now();
-    SyncedMemory y_mem(num_labels_ * sizeof(float));
 #if defined(CPU_WORKER)
-    float *y = reinterpret_cast<float *>(y_mem.mutable_cpu_data());
-    float *feature = reinterpret_cast<float *>(feature_mem->mutable_cpu_data());
-    float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_cpu_data());
-    float *w_delta = reinterpret_cast<float *>(w_delta_mem_->mutable_cpu_data());
+    val_t *y = reinterpret_cast<val_t *>(y_mem_->mutable_cpu_data());
+    val_t *feature = reinterpret_cast<val_t *>(feature_mem->mutable_cpu_data());
+    val_t *w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_cpu_data());
+    val_t *w_delta = reinterpret_cast<val_t *>(w_delta_mem_->mutable_cpu_data());
 #else
-    float *y = reinterpret_cast<float *>(y_mem.mutable_gpu_data());
-    float *feature = reinterpret_cast<float *>(feature_mem->mutable_gpu_data());
-    float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_gpu_data());
-    float *w_delta = reinterpret_cast<float *>(w_delta_mem_->mutable_gpu_data());
+    val_t *y = reinterpret_cast<val_t *>(y_mem_->mutable_gpu_data());
+    val_t *feature = reinterpret_cast<val_t *>(feature_mem->mutable_gpu_data());
+    val_t *w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_gpu_data());
+    val_t *w_delta = reinterpret_cast<val_t *>(w_delta_mem_->mutable_gpu_data());
 #endif
     tbb::tick_count predict_start = tbb::tick_count::now();
     alloc_mem_time += (predict_start - alloc_mem_start).seconds();
@@ -228,16 +229,16 @@ class mlr_computer {
 
     // outer product
 #if defined(CPU_WORKER)
-    caffe::caffe_cpu_gemm<float>(
+    caffe::caffe_cpu_gemm<val_t>(
 #else
-    caffe::caffe_gpu_gemm<float>(
+    caffe::caffe_gpu_gemm<val_t>(
 #endif
       CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
       -learning_rate, y, feature, 1, w_cache);
 #if defined(CPU_WORKER)
-    caffe::caffe_cpu_gemm<float>(
+    caffe::caffe_cpu_gemm<val_t>(
 #else
-    caffe::caffe_gpu_gemm<float>(
+    caffe::caffe_gpu_gemm<val_t>(
 #endif
       CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
       -learning_rate, y, feature, 1, w_delta);
@@ -248,7 +249,7 @@ class mlr_computer {
   void compute() {
     refresh_weights();
 
-    float curr_learning_rate = learning_rate_ * pow(decay_rate_, cur_clock_);
+    val_t curr_learning_rate = learning_rate_ * pow(decay_rate_, cur_clock_);
     for (uint i = batch_offset_; i < batch_offset_ + batch_size_; i++) {
       SingleDataSGD(train_feature_mems_[i], train_labels_[i], curr_learning_rate);
     }
