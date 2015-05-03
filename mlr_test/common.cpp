@@ -15,6 +15,23 @@ void GlobalInit(int* pargc, char*** pargv) {
   ::google::InitGoogleLogging(*(pargv)[0]);
 }
 
+#ifdef CPU_ONLY  // CPU-only Caffe.
+
+Caffe::Caffe() { }
+
+Caffe::~Caffe() { }
+
+void Caffe::SetDevice(const int device_id) {
+  NO_GPU;
+}
+
+void Caffe::DeviceQuery() {
+  NO_GPU;
+}
+
+
+#else  // Normal GPU + CPU Caffe.
+
 Caffe::Caffe()
     : cublas_handle_(NULL) {
   // Try to create a cublas handler, and report an error if failed (but we will
@@ -105,5 +122,7 @@ const char* cublasGetErrorString(cublasStatus_t error) {
   }
   return "Unknown cublas status";
 }
+
+#endif
 
 }  // namespace caffe

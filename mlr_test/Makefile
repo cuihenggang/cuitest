@@ -2,4 +2,4 @@ LIBS = -lglog -lgflags -lboost_system -lboost_thread -lboost_program_options -lb
 
 all: Makefile mlr.cpp
 	#nvcc -DCPU_WORKER mlr.cpp syncedmem.cpp math_functions.cpp $(LIBS) -o mlr -g -O3
-	nvcc -DCPU_WORKER mlr.cpp syncedmem.cpp math_functions.cpp math_functions.cu common.cpp $(LIBS) -o mlr -g -O3
+	nvcc -DCPU_WORKER mlr.cpp syncedmem.cpp math_functions.cpp common.cpp math_functions.cu $(LIBS) -o mlr -g -O3
