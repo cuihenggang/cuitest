@@ -154,7 +154,11 @@ class mlr_computer {
     for (uint i = 0; i < train_features_tmp.size(); i++) {
       train_feature_mems_[i] = new SyncedMemory(num_row_bytes);
       void *train_feature_mem_ptr = train_feature_mems_[i]->mutable_cpu_data();
-      memcpy(train_feature_mem_ptr, train_features_tmp[i].data(), feature_dim_ * sizeof(val_t));
+      memcpy(train_feature_mem_ptr, train_features_tmp[i].data(),
+             feature_dim_ * sizeof(val_t));
+#if !defined(CPU_WORKER)
+      train_feature_mems_[i]->mutable_gpu_data();
+#endif
     }
 
     uint div = train_feature_mems_.size() / num_compobj_;
@@ -170,6 +174,17 @@ class mlr_computer {
     w_cache_mem_ = new SyncedMemory(w_mem_size);
     w_delta_mem_ = new SyncedMemory(w_mem_size);
     y_mem_ = new SyncedMemory(num_labels_ * sizeof(val_t));
+
+    /* Pre-allocate memory */
+#if defined(CPU_WORKER)
+    y_mem_->mutable_cpu_data();
+    w_cache_mem_->mutable_cpu_data();
+    w_delta_mem_->mutable_cpu_data();
+#else
+    y_mem_->mutable_gpu_data();
+    w_cache_mem_->mutable_gpu_data();
+    w_delta_mem_->mutable_gpu_data();
+#endif
 
     alloc_mem_time = 0;
     predict_time = 0;
