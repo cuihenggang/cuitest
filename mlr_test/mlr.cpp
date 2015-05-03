@@ -75,7 +75,7 @@ class mlr_computer {
 
   string inputfile_prefix_;
 
-  uint w_row_size_;
+  uint cpu_worker_;
   vector<SyncedMemory *> train_feature_mems_;
   vector<int> train_labels_;
   SyncedMemory *w_cache_mem_;
@@ -97,7 +97,8 @@ class mlr_computer {
       work_per_clock_(1),
       learning_rate_(0.4),
       decay_rate_(0.95),
-      cur_clock_(0)
+      cur_clock_(0),
+      cpu_worker_(0)
   { }
 
   void read_metafile(string datafile_prefix) {
@@ -145,9 +146,9 @@ class mlr_computer {
       void *train_feature_mem_ptr = train_feature_mems_[i]->mutable_cpu_data();
       memcpy(train_feature_mem_ptr, train_features_tmp[i].data(),
              feature_dim_ * sizeof(val_t));
-#if !defined(CPU_WORKER)
-      train_feature_mems_[i]->mutable_gpu_data();
-#endif
+      if (!cpu_worker_) {
+        train_feature_mems_[i]->mutable_gpu_data();
+      }
     }
 
     uint div = train_feature_mems_.size() / num_compobj_;
@@ -158,22 +159,21 @@ class mlr_computer {
   }
 
   void initialize() {
-    w_row_size_ = ROW_DATA_SIZE * sizeof(val_t);
-    uint w_mem_size = num_labels_ * w_row_size_;
+    uint w_mem_size = num_labels_ * ROW_DATA_SIZE * sizeof(val_t);
     w_cache_mem_ = new SyncedMemory(w_mem_size);
     w_delta_mem_ = new SyncedMemory(w_mem_size);
     y_mem_ = new SyncedMemory(num_labels_ * sizeof(val_t));
 
     /* Pre-allocate memory */
-#if defined(CPU_WORKER)
-    y_mem_->mutable_cpu_data();
-    w_cache_mem_->mutable_cpu_data();
-    w_delta_mem_->mutable_cpu_data();
-#else
-    y_mem_->mutable_gpu_data();
-    w_cache_mem_->mutable_gpu_data();
-    w_delta_mem_->mutable_gpu_data();
-#endif
+    if (cpu_worker_) {
+      y_mem_->mutable_cpu_data();
+      w_cache_mem_->mutable_cpu_data();
+      w_delta_mem_->mutable_cpu_data();
+    } else {
+      y_mem_->mutable_gpu_data();
+      w_cache_mem_->mutable_gpu_data();
+      w_delta_mem_->mutable_gpu_data();
+    }
 
     alloc_mem_time = 0;
     predict_time = 0;
@@ -197,52 +197,58 @@ class mlr_computer {
 
   void SingleDataSGD(SyncedMemory *feature_mem, uint label, val_t learning_rate) {
     tbb::tick_count alloc_mem_start = tbb::tick_count::now();
-#if defined(CPU_WORKER)
-    val_t *y = reinterpret_cast<val_t *>(y_mem_->mutable_cpu_data());
-    val_t *feature = reinterpret_cast<val_t *>(feature_mem->mutable_cpu_data());
-    val_t *w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_cpu_data());
-    val_t *w_delta = reinterpret_cast<val_t *>(w_delta_mem_->mutable_cpu_data());
-#else
-    val_t *y = reinterpret_cast<val_t *>(y_mem_->mutable_gpu_data());
-    val_t *feature = reinterpret_cast<val_t *>(feature_mem->mutable_gpu_data());
-    val_t *w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_gpu_data());
-    val_t *w_delta = reinterpret_cast<val_t *>(w_delta_mem_->mutable_gpu_data());
-#endif
+    val_t *y;
+    val_t *feature;
+    val_t *w_cache;
+    val_t *w_delta;
+    if (cpu_worker_) {
+      y = reinterpret_cast<val_t *>(y_mem_->mutable_cpu_data());
+      feature = reinterpret_cast<val_t *>(feature_mem->mutable_cpu_data());
+      w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_cpu_data());
+      w_delta = reinterpret_cast<val_t *>(w_delta_mem_->mutable_cpu_data());
+    } else {
+      y = reinterpret_cast<val_t *>(y_mem_->mutable_gpu_data());
+      feature = reinterpret_cast<val_t *>(feature_mem->mutable_gpu_data());
+      w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_gpu_data());
+      w_delta = reinterpret_cast<val_t *>(w_delta_mem_->mutable_gpu_data());
+    }
     tbb::tick_count predict_start = tbb::tick_count::now();
     alloc_mem_time += (predict_start - alloc_mem_start).seconds();
 
-#if defined(CPU_WORKER)
-    caffe::caffe_cpu_gemv<val_t>(
-#else
-    caffe::caffe_gpu_gemv<val_t>(
-#endif
-      CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
+    if (cpu_worker_) {
+      caffe::caffe_cpu_gemv<val_t>(
+        CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
+    } else {
+      caffe::caffe_gpu_gemv<val_t>(
+        CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
+    }
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - predict_start).seconds();
 
-#if defined(CPU_WORKER)
-    SoftmaxAndAdjust(y, num_labels_, label);
-#else
-    SoftmaxAndAdjust_gpu(y, num_labels_, label);
-#endif
+    if (cpu_worker_) {
+      SoftmaxAndAdjust(y, num_labels_, label);
+    } else {
+      SoftmaxAndAdjust_gpu(y, num_labels_, label);
+    }
     tbb::tick_count softmax_end = tbb::tick_count::now();
     softmax_time += (softmax_end - dotproduct_end).seconds();
 
     // outer product
-#if defined(CPU_WORKER)
-    caffe::caffe_cpu_gemm<val_t>(
-#else
-    caffe::caffe_gpu_gemm<val_t>(
-#endif
-      CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
-      -learning_rate, y, feature, 1, w_cache);
-#if defined(CPU_WORKER)
-    caffe::caffe_cpu_gemm<val_t>(
-#else
-    caffe::caffe_gpu_gemm<val_t>(
-#endif
-      CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
-      -learning_rate, y, feature, 1, w_delta);
+    if (cpu_worker_) {
+      caffe::caffe_cpu_gemm<val_t>(
+        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
+        -learning_rate, y, feature, 1, w_cache);
+      caffe::caffe_cpu_gemm<val_t>(
+        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
+        -learning_rate, y, feature, 1, w_delta);
+    } else {
+      caffe::caffe_gpu_gemm<val_t>(
+        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
+        -learning_rate, y, feature, 1, w_cache);
+      caffe::caffe_gpu_gemm<val_t>(
+        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
+        -learning_rate, y, feature, 1, w_delta);
+    }
     outer_product_time +=
       (tbb::tick_count::now() - softmax_end).seconds();
   }
@@ -261,7 +267,13 @@ class mlr_computer {
 };
 
 int main(int argc, char* argv[]) {
+  uint cpu_worker = 0;
+  if (argc > 1) {
+    cpu_worker = atoi(argv[1]);
+  }
+
   mlr_computer computer;
+  computer.cpu_worker_ = cpu_worker;
 
   /* Read data */
   // string data_file = "/proj/BigLearning/hengganc/data/mlr_data/imagenet_llc/imnet.train.50.train";
