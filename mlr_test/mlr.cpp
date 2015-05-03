@@ -191,7 +191,11 @@ class mlr_computer {
 
   void Predict(float *y, float *feature, float *w_cache) {
     tbb::tick_count make_y_end = tbb::tick_count::now();
+#if defined(CPU_ONLY)
     caffe::caffe_cpu_gemv<float>(
+#else
+    caffe::caffe_gpu_gemv<float>(
+#endif
       CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - make_y_end).seconds();
@@ -203,20 +207,35 @@ class mlr_computer {
   void SingleDataSGD(SyncedMemory *feature_mem, uint label, float learning_rate) {
     tbb::tick_count predict_start = tbb::tick_count::now();
     SyncedMemory y_mem(num_labels_ * sizeof(float));
+#if defined(CPU_WORKER)
     float *y = reinterpret_cast<float *>(y_mem.mutable_cpu_data());
     float *feature = reinterpret_cast<float *>(feature_mem->mutable_cpu_data());
     float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_cpu_data());
     float *w_delta = reinterpret_cast<float *>(w_delta_mem_->mutable_cpu_data());
+#else
+    float *y = reinterpret_cast<float *>(y_mem.mutable_gpu_data());
+    float *feature = reinterpret_cast<float *>(feature_mem->mutable_gpu_data());
+    float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_gpu_data());
+    float *w_delta = reinterpret_cast<float *>(w_delta_mem_->mutable_gpu_data());
+#endif
     Predict(y, feature, w_cache);
     y[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
     tbb::tick_count predict_end = tbb::tick_count::now();
     predict_time += (predict_end - predict_start).seconds();
 
     // outer product
+#if defined(CPU_WORKER)
     caffe::caffe_cpu_gemm<float>(
+#else
+    caffe::caffe_gpu_gemm<float>(
+#endif
       CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
       -learning_rate, y, feature, 1, w_cache);
+#if defined(CPU_WORKER)
     caffe::caffe_cpu_gemm<float>(
+#else
+    caffe::caffe_gpu_gemm<float>(
+#endif
       CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
       -learning_rate, y, feature, 1, w_delta);
     outer_product_time +=
