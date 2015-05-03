@@ -48,3 +48,21 @@ outer_product_time = 4.85773
 make_y_time = 0
 dotproduct_time = 0.812473
 softmax_time = 0.00417769
+
+# Susitna: caffe CPU, no softmax or y_vec adjustment
+count = 0
+alloc_mem_time = 0.0470124
+predict_time = 0.818194
+outer_product_time = 4.88337
+dotproduct_time = 0.818146
+softmax_time = 3.2013e-05
+
+# Susitna: caffe GPU, no softmax or y_vec adjustment
+count = 0
+alloc_mem_time = 1.7627
+predict_time = 0.15931
+outer_product_time = 0.000647245
+dotproduct_time = 0.159291
+softmax_time = 6.625e-06
+35.6x faster without alloc_mem_time
+3x faster with alloc_mem_time

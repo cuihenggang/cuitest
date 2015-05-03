@@ -92,7 +92,7 @@ class mlr_computer {
   SyncedMemory *w_cache_mem_;
   SyncedMemory *w_delta_mem_;
 
-  double make_y_time;
+  double alloc_mem_time;
   double predict_time;
   double outer_product_time;
   double dotproduct_time;
@@ -169,7 +169,7 @@ class mlr_computer {
     w_cache_mem_ = new SyncedMemory(w_mem_size);
     w_delta_mem_ = new SyncedMemory(w_mem_size);
 
-    make_y_time = 0;
+    alloc_mem_time = 0;
     predict_time = 0;
     outer_product_time = 0;
     dotproduct_time = 0;
@@ -200,12 +200,12 @@ class mlr_computer {
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - make_y_end).seconds();
     
-    Softmax(y, num_labels_);
+    // Softmax(y, num_labels_);
     softmax_time += (tbb::tick_count::now() - dotproduct_end).seconds();
   }
 
   void SingleDataSGD(SyncedMemory *feature_mem, uint label, float learning_rate) {
-    tbb::tick_count predict_start = tbb::tick_count::now();
+    tbb::tick_count alloc_mem_start = tbb::tick_count::now();
     SyncedMemory y_mem(num_labels_ * sizeof(float));
 #if defined(CPU_WORKER)
     float *y = reinterpret_cast<float *>(y_mem.mutable_cpu_data());
@@ -218,8 +218,11 @@ class mlr_computer {
     float *w_cache = reinterpret_cast<float *>(w_cache_mem_->mutable_gpu_data());
     float *w_delta = reinterpret_cast<float *>(w_delta_mem_->mutable_gpu_data());
 #endif
+    tbb::tick_count predict_start = tbb::tick_count::now();
+    alloc_mem_time += (predict_start - alloc_mem_start).seconds();
+
     Predict(y, feature, w_cache);
-    y[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+    // y[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
     tbb::tick_count predict_end = tbb::tick_count::now();
     predict_time += (predict_end - predict_start).seconds();
 
@@ -271,9 +274,9 @@ int main(int argc, char* argv[]) {
     computer.compute();
   }
 
+  cout << "alloc_mem_time = " << computer.alloc_mem_time << endl;
   cout << "predict_time = " << computer.predict_time << endl;
   cout << "outer_product_time = " << computer.outer_product_time << endl;
-  cout << "make_y_time = " << computer.make_y_time << endl;
   cout << "dotproduct_time = " << computer.dotproduct_time << endl;
   cout << "softmax_time = " << computer.softmax_time << endl;
 }
