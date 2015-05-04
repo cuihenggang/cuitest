@@ -82,11 +82,12 @@ class mlr_computer {
   SyncedMemory *w_delta_mem_;
   SyncedMemory *y_mem_;
 
+  double refresh_weights_time;
   double alloc_mem_time;
-  double predict_time;
-  double outer_product_time;
   double dotproduct_time;
   double softmax_time;
+  double outer_product_time;
+  double change_weights_time;
 
  public:
   mlr_computer()
@@ -171,22 +172,41 @@ class mlr_computer {
       w_delta_mem_->mutable_cpu_data();
     } else {
       y_mem_->mutable_gpu_data();
+      w_cache_mem_->mutable_cpu_data();
+      w_delta_mem_->mutable_cpu_data();
       w_cache_mem_->mutable_gpu_data();
       w_delta_mem_->mutable_gpu_data();
     }
 
+    refresh_weights_time = 0;
     alloc_mem_time = 0;
-    predict_time = 0;
-    outer_product_time = 0;
     dotproduct_time = 0;
     softmax_time = 0;
+    outer_product_time = 0;
+    change_weights_time = 0;
   }
 
   void refresh_weights() {
-
+    /* Shift memory */
+    tbb::tick_count refresh_weights_start = tbb::tick_count::now();
+    if (!cpu_worker_) {
+      w_cache_mem_->mutable_cpu_data();
+      w_delta_mem_->mutable_cpu_data();
+      w_cache_mem_->mutable_gpu_data();
+      w_delta_mem_->mutable_gpu_data();
+    }
+    refresh_weights_time +=
+      (tbb::tick_count::now() - refresh_weights_start).seconds();
   }
 
   void change_weights() {
+    /* Shift memory */
+    tbb::tick_count change_weights_start = tbb::tick_count::now();
+    w_cache_mem_->mutable_cpu_data();
+    w_delta_mem_->mutable_cpu_data();
+    change_weights_time +=
+      (tbb::tick_count::now() - change_weights_start).seconds();
+
     val_t *w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_cpu_data());
     val_t sum = 0.0;
     uint num_possitives = 0;
@@ -270,7 +290,7 @@ class mlr_computer {
 
   void compute() {
     refresh_weights();
-
+    
     val_t curr_learning_rate = learning_rate_ * pow(decay_rate_, cur_clock_);
     // SingleDataSGD(train_feature_mems_[0], train_labels_[0], curr_learning_rate);
     for (uint i = batch_offset_; i < batch_offset_ + batch_size_; i++) {
@@ -278,6 +298,7 @@ class mlr_computer {
     }
 
     change_weights();
+
     cur_clock_++;
   }
 };
@@ -314,11 +335,17 @@ int main(int argc, char* argv[]) {
     computer.compute();
   }
 
+  cout << "refresh_weights_time = " << computer.refresh_weights_time << endl;
   cout << "alloc_mem_time = " << computer.alloc_mem_time << endl;
   cout << "dotproduct_time = " << computer.dotproduct_time << endl;
   cout << "softmax_time = " << computer.softmax_time << endl;
   cout << "outer_product_time = " << computer.outer_product_time << endl;
-  double total_time = computer.alloc_mem_time + computer.dotproduct_time +
-                      computer.softmax_time + computer.outer_product_time;
+  cout << "change_weights_time = " << computer.change_weights_time << endl;
+  double total_compute_time =
+      computer.alloc_mem_time + computer.dotproduct_time +
+      computer.softmax_time + computer.outer_product_time;
+  cout << "total_compute_time = " << total_compute_time << endl;
+  double total_time = total_compute_time +
+      computer.refresh_weights_time + computer.change_weights_time;
   cout << "total_time = " << total_time << endl;
 }

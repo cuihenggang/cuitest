@@ -81,3 +81,29 @@ dotproduct_time = 0.1564
 softmax_time = 0.177294
 outer_product_time = 0.000595494
 17x speed up
+
+# Susitna: caffe CPU, do softmax and y_vec adjustment
+num_possitives = 278487
+sum = -3.58524
+refresh_weights_time = 1.82e-07
+alloc_mem_time = 1.8573e-05
+dotproduct_time = 0.819757
+softmax_time = 0.00430152
+outer_product_time = 4.85962
+change_weights_time = 2.96e-07
+total_compute_time = 5.6837
+total_time = 5.6837
+
+# Susitna: caffe GPU, do softmax and y_vec adjustment using kernel function
+num_possitives = 278494
+sum = 0.134465
+refresh_weights_time = 0.175778
+alloc_mem_time = 7.89e-06
+dotproduct_time = 0.000382452
+softmax_time = 0.000391891
+outer_product_time = 0.000580664
+change_weights_time = 0.371294
+total_compute_time = 0.0013629
+(4000x speed up)
+total_time = 0.548435
+(10x speed up)
