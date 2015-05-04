@@ -15,8 +15,8 @@
 #define kCutoff 1e-15
 
 __device__ float LogSum_device(float log_a, float log_b) {
-  return (log_a < log_b) ? log_b + log(1 + exp(log_a - log_b)) :
-                           log_a + log(1 + exp(log_b - log_a));
+  return (log_a < log_b) ? log_b + logf(1 + expf(log_a - log_b)) :
+                           log_a + logf(1 + expf(log_b - log_a));
 }
 
 __device__ float LogSumVec_device(const float *logvec, size_t size) {
@@ -37,7 +37,7 @@ __device__ void Softmax_device(float *vec, size_t size) {
 	}
 	float lsum = LogSumVec_device(vec, size);
 	for (uint i = 0; i < size; ++i) {
-		vec[i] = exp(vec[i] - lsum);
+		vec[i] = expf(vec[i] - lsum);
 		//(*vec)[i] = exp((*vec)[i] - lsum);
     vec[i] = vec[i] > 1 ? 1. : vec[i];
   }

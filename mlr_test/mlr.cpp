@@ -188,11 +188,26 @@ class mlr_computer {
 
   void change_weights() {
     val_t *w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_cpu_data());
-    val_t count = 0.0;
+    val_t sum = 0.0;
+    uint num_possitives = 0;
     for (uint i = 0; i < num_labels_ * ROW_DATA_SIZE; i++) {
-      count += w_cache[i];
+      sum += w_cache[i];
+      if (w_cache[i] > 0) {
+        num_possitives++;
+      }
     }
-    cout << "count = " << count << endl;
+    // cout << "W cache row sums:" << endl;
+    // for (uint i = 0; i < num_labels_; i++) {
+      // val_t row_sum = 0.0;
+      // for (uint j = 0; j < ROW_DATA_SIZE; j++) {
+        // row_sum += w_cache[i * ROW_DATA_SIZE + j];
+      // }
+      // cout << row_sum << ' ';
+      // sum += row_sum;
+    // }
+    // cout << endl;
+    cout << "num_possitives = " << num_possitives << endl;
+    cout << "sum = " << sum << endl;
   }
 
   void SingleDataSGD(SyncedMemory *feature_mem, uint label, val_t learning_rate) {
@@ -257,6 +272,7 @@ class mlr_computer {
     refresh_weights();
 
     val_t curr_learning_rate = learning_rate_ * pow(decay_rate_, cur_clock_);
+    // SingleDataSGD(train_feature_mems_[0], train_labels_[0], curr_learning_rate);
     for (uint i = batch_offset_; i < batch_offset_ + batch_size_; i++) {
       SingleDataSGD(train_feature_mems_[i], train_labels_[i], curr_learning_rate);
     }
@@ -268,8 +284,17 @@ class mlr_computer {
 
 int main(int argc, char* argv[]) {
   uint cpu_worker = 0;
+  uint batch_size = 50;
   if (argc > 1) {
     cpu_worker = atoi(argv[1]);
+  }
+  if (argc > 2) {
+    batch_size = atoi(argv[2]);
+  }
+
+  /* Create cublas_handle */
+  if (!cpu_worker) {
+    caffe::Caffe::cublas_handle();
   }
 
   mlr_computer computer;
@@ -279,6 +304,7 @@ int main(int argc, char* argv[]) {
   // string data_file = "/proj/BigLearning/hengganc/data/mlr_data/imagenet_llc/imnet.train.50.train";
   string data_file = "/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.50.train";
   computer.read_data(data_file);
+  computer.batch_size_ = batch_size;
 
   /* Set initial values */
   computer.initialize();
@@ -292,4 +318,7 @@ int main(int argc, char* argv[]) {
   cout << "dotproduct_time = " << computer.dotproduct_time << endl;
   cout << "softmax_time = " << computer.softmax_time << endl;
   cout << "outer_product_time = " << computer.outer_product_time << endl;
+  double total_time = computer.alloc_mem_time + computer.dotproduct_time +
+                      computer.softmax_time + computer.outer_product_time;
+  cout << "total_time = " << total_time << endl;
 }
