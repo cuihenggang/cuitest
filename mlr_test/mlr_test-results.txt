@@ -107,3 +107,16 @@ total_compute_time = 0.0013629
 (4000x speed up)
 total_time = 0.548435
 (10x speed up)
+
+# Susitna, GPU, device synchronize after kernel calls
+hengganc@h0:~/cuitest/mlr_test$ ./mlr 0 50
+num_possitives = 278494
+sum = 0.134465
+refresh_weights_time = 0.111842
+alloc_mem_time = 0.000440285
+dotproduct_time = 0.0433198
+softmax_time = 0.10884
+outer_product_time = 0.133496
+change_weights_time = 0.0560405
+total_compute_time = 0.286096
+total_time = 0.453979
