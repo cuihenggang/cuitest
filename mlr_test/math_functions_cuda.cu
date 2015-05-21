@@ -9,7 +9,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "common.hpp"
 #include "math_functions.hpp"
 
 namespace caffe {

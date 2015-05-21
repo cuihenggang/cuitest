@@ -9,7 +9,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "common.hpp"
 #include "math_functions.hpp"
 
 #define kCutoff 1e-15
@@ -44,17 +43,22 @@ __device__ void Softmax_device(float *vec, size_t size) {
 }
 
 __global__ void SoftmaxAndAdjust_kernel(
-    float *vec, const size_t size, uint label) {
-  Softmax_device(vec, size);
-  vec[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+    size_t n, size_t size, float *vecs, uint *labels) {
+  CUDA_KERNEL_LOOP(index, n) {
+    float *vec = &vecs[index * size];
+    Softmax_device(vec, size);
+    vec[labels[index]] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+  }
 }
 
 __global__ void empty_kernel() {
 
 }
 
-void SoftmaxAndAdjust_gpu(float *vec, const size_t size, uint label) {
-  SoftmaxAndAdjust_kernel<<<1, 1>>>(vec, size, label);
+void SoftmaxAndAdjust_gpu(size_t n, size_t size, float *vecs, uint *labels) {
+  SoftmaxAndAdjust_kernel
+      <<<caffe::CAFFE_GET_BLOCKS(n), caffe::CAFFE_CUDA_NUM_THREADS>>>
+      (n, size, vecs, labels);
 }
 
 void empty_gpu_func() {

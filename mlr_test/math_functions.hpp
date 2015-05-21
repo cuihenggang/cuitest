@@ -10,9 +10,9 @@ extern "C" {
 #include <cblas.h>
 }
 
+#include "common.hpp"
 #include "device_alternate.hpp"
 #include "mkl_alternate.hpp"
-#include "common.hpp"
 
 namespace caffe {
 

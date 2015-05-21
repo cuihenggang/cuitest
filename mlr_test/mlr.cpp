@@ -40,12 +40,15 @@ typedef uint32_t uint;
 using caffe::SyncedMemory;
 
 #if !defined(CPU_ONLY)
-void SoftmaxAndAdjust_gpu(float *vec, size_t size, uint label);
+void SoftmaxAndAdjust_gpu(size_t n, size_t size, float *vecs, uint *labels);
 #endif
 
-void SoftmaxAndAdjust(float *vec, size_t size, uint label) {
-  Softmax(vec, size);
-  vec[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+void SoftmaxAndAdjust(size_t n, size_t size, float *vecs, uint *labels) {
+  for (size_t i = 0; i < n; i++) {
+    float *vec = &vecs[i * size];
+    Softmax(vec, size);
+    vec[labels[i]] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+  }
 }
 
 #if !defined(CPU_ONLY)
@@ -80,11 +83,11 @@ class mlr_computer {
   string inputfile_prefix_;
 
   uint cpu_worker_;
-  vector<SyncedMemory *> train_feature_mems_;
-  vector<int> train_labels_;
+  SyncedMemory *train_feature_mem_;
+  SyncedMemory *train_label_mem_;
   SyncedMemory *w_cache_mem_;
   SyncedMemory *w_delta_mem_;
-  SyncedMemory *y_mem_;
+  SyncedMemory *y_batch_mem_;
 
   double refresh_weights_time;
   double alloc_mem_time;
@@ -126,56 +129,64 @@ class mlr_computer {
       + (1 ? "" : "." + boost::lexical_cast<uint>(compobj_rank_));
     // LOG(INFO) << "Reading train file: " << train_file;
     vector<vector<float> > train_features_tmp;
+    vector<int> train_labels_tmp;
     if (read_format_ == "bin") {
       // if (compobj_rank_ == 0) {
       if (false) {
         ReadDataLabelBinary2(train_file, feature_dim_, num_train_data_,
-            &train_features_tmp, &train_labels_, feature_one_based_,
+            &train_features_tmp, &train_labels_tmp, feature_one_based_,
             label_one_based_);
       } else {
         ReadDataLabelBinary(train_file, feature_dim_, num_train_data_,
-            &train_features_tmp, &train_labels_, feature_one_based_,
+            &train_features_tmp, &train_labels_tmp, feature_one_based_,
             label_one_based_);
       }
     } else if (read_format_ == "libsvm") {
       ReadDataLabelLibSVM(train_file, feature_dim_, num_train_data_,
-          &train_features_tmp, &train_labels_, feature_one_based_,
+          &train_features_tmp, &train_labels_tmp, feature_one_based_,
           label_one_based_, snappy_compressed_);
     }
 
-    train_feature_mems_.resize(train_features_tmp.size());
-    uint num_row_bytes = ROW_DATA_SIZE * sizeof(val_t);
     assert(feature_dim_ <= ROW_DATA_SIZE);
+    train_feature_mem_ = new SyncedMemory(
+        train_features_tmp.size() * ROW_DATA_SIZE * sizeof(val_t));
+    RowData *train_features =
+        reinterpret_cast<RowData *>(train_feature_mem_->mutable_cpu_data());
     for (uint i = 0; i < train_features_tmp.size(); i++) {
-      train_feature_mems_[i] = new SyncedMemory(num_row_bytes);
-      void *train_feature_mem_ptr = train_feature_mems_[i]->mutable_cpu_data();
-      memcpy(train_feature_mem_ptr, train_features_tmp[i].data(),
-             feature_dim_ * sizeof(val_t));
-      if (!cpu_worker_) {
-        train_feature_mems_[i]->mutable_gpu_data();
-      }
+      RowData *train_feature = &(train_features[i]);
+      memcpy(reinterpret_cast<void *>(train_feature),
+          train_features_tmp[i].data(), feature_dim_ * sizeof(val_t));
+    }
+    assert(sizeof(uint) == sizeof(int));
+    train_label_mem_ = new SyncedMemory(
+        train_labels_tmp.size() * sizeof(uint));
+    void *train_labels_ptr =
+        reinterpret_cast<void *>(train_label_mem_->mutable_cpu_data());
+    memcpy(train_labels_ptr, train_labels_tmp.data(),
+        train_label_mem_->size());
+    if (!cpu_worker_) {
+      train_label_mem_->mutable_gpu_data();
     }
 
-    uint div = train_feature_mems_.size() / num_compobj_;
-    uint res = train_feature_mems_.size() % num_compobj_;
+    uint div = train_features_tmp.size() / num_compobj_;
+    uint res = train_features_tmp.size() % num_compobj_;
     batch_offset_ =
         div * compobj_rank_ + (res > compobj_rank_ ? compobj_rank_ : res);
     batch_size_ = div + (res > compobj_rank_ ? 1 : 0);
   }
 
   void initialize() {
-    uint w_mem_size = num_labels_ * ROW_DATA_SIZE * sizeof(val_t);
-    w_cache_mem_ = new SyncedMemory(w_mem_size);
-    w_delta_mem_ = new SyncedMemory(w_mem_size);
-    y_mem_ = new SyncedMemory(num_labels_ * sizeof(val_t));
+    w_cache_mem_ = new SyncedMemory(num_labels_ * ROW_DATA_SIZE * sizeof(val_t));
+    w_delta_mem_ = new SyncedMemory(num_labels_ * ROW_DATA_SIZE * sizeof(val_t));
+    y_batch_mem_ = new SyncedMemory(batch_size_ * num_labels_ * sizeof(val_t));
 
     /* Pre-allocate memory */
     if (cpu_worker_) {
-      y_mem_->mutable_cpu_data();
+      y_batch_mem_->mutable_cpu_data();
       w_cache_mem_->mutable_cpu_data();
       w_delta_mem_->mutable_cpu_data();
     } else {
-      y_mem_->mutable_gpu_data();
+      y_batch_mem_->mutable_gpu_data();
       w_cache_mem_->mutable_cpu_data();
       w_delta_mem_->mutable_cpu_data();
       w_cache_mem_->mutable_gpu_data();
@@ -234,42 +245,50 @@ class mlr_computer {
     cout << "sum = " << sum << endl;
   }
 
-  void SingleDataSGD(SyncedMemory *feature_mem, uint label, val_t learning_rate) {
+  void batch_sgd() {
+    val_t learning_rate = learning_rate_ * pow(decay_rate_, cur_clock_);
     tbb::tick_count alloc_mem_start = tbb::tick_count::now();
-    val_t *y;
-    val_t *feature;
+    val_t *y_batch;
+    RowData *feature_rows;
+    val_t *feature_batch;
+    uint *labels;
     val_t *w_cache;
     val_t *w_delta;
     if (cpu_worker_) {
-      y = reinterpret_cast<val_t *>(y_mem_->mutable_cpu_data());
-      feature = reinterpret_cast<val_t *>(feature_mem->mutable_cpu_data());
+      y_batch = reinterpret_cast<val_t *>(y_batch_mem_->mutable_cpu_data());
+      feature_rows = reinterpret_cast<RowData *>(
+          train_feature_mem_->mutable_cpu_data());
+      feature_batch = reinterpret_cast<val_t *>(&feature_rows[batch_offset_]);
+      labels = reinterpret_cast<uint *>(train_label_mem_->mutable_cpu_data());
       w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_cpu_data());
       w_delta = reinterpret_cast<val_t *>(w_delta_mem_->mutable_cpu_data());
     } else {
-      y = reinterpret_cast<val_t *>(y_mem_->mutable_gpu_data());
-      feature = reinterpret_cast<val_t *>(feature_mem->mutable_gpu_data());
+      y_batch = reinterpret_cast<val_t *>(y_batch_mem_->mutable_gpu_data());
+      feature_rows = reinterpret_cast<RowData *>(
+          train_feature_mem_->mutable_gpu_data());
+      feature_batch = reinterpret_cast<val_t *>(&feature_rows[batch_offset_]);
+      labels = reinterpret_cast<uint *>(train_label_mem_->mutable_gpu_data());
       w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_gpu_data());
       w_delta = reinterpret_cast<val_t *>(w_delta_mem_->mutable_gpu_data());
     }
-    empty_gpu_func();
     tbb::tick_count predict_start = tbb::tick_count::now();
     alloc_mem_time += (predict_start - alloc_mem_start).seconds();
 
     if (cpu_worker_) {
       caffe::caffe_cpu_gemv<val_t>(
-        CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
+        CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_, w_cache, feature_batch, 0, y_batch);
     } else {
       caffe::caffe_gpu_gemv<val_t>(
-        CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
+        CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_, w_cache, feature_batch, 0, y_batch);
       cudaDeviceSynchronize();
     }
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - predict_start).seconds();
 
     if (cpu_worker_) {
-      SoftmaxAndAdjust(y, num_labels_, label);
+      SoftmaxAndAdjust(batch_size_, num_labels_, y_batch, labels);
     } else {
-      SoftmaxAndAdjust_gpu(y, num_labels_, label);
+      SoftmaxAndAdjust_gpu(batch_size_, num_labels_, y_batch, labels);
       cudaDeviceSynchronize();
     }
     tbb::tick_count softmax_end = tbb::tick_count::now();
@@ -278,18 +297,18 @@ class mlr_computer {
     // outer product
     if (cpu_worker_) {
       caffe::caffe_cpu_gemm<val_t>(
-        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
-        -learning_rate, y, feature, 1, w_cache);
+        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
+        -learning_rate, y_batch, feature_batch, 1, w_cache);
       caffe::caffe_cpu_gemm<val_t>(
-        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
-        -learning_rate, y, feature, 1, w_delta);
+        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
+        -learning_rate, y_batch, feature_batch, 1, w_delta);
     } else {
       caffe::caffe_gpu_gemm<val_t>(
-        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
-        -learning_rate, y, feature, 1, w_cache);
+        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
+        -learning_rate, y_batch, feature_batch, 1, w_cache);
       caffe::caffe_gpu_gemm<val_t>(
-        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
-        -learning_rate, y, feature, 1, w_delta);
+        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
+        -learning_rate, y_batch, feature_batch, 1, w_delta);
       cudaDeviceSynchronize();
     }
     outer_product_time +=
@@ -298,19 +317,8 @@ class mlr_computer {
 
   void compute() {
     refresh_weights();
-    
-    val_t curr_learning_rate = learning_rate_ * pow(decay_rate_, cur_clock_);
-    for (uint i = batch_offset_; i < batch_offset_ + batch_size_; i++) {
-      SingleDataSGD(train_feature_mems_[i], train_labels_[i], curr_learning_rate);
-    }
-    // for (uint r = 0; r < 2; r++) {
-      // if (r != 0) {
-        // refresh_weights();
-      // }
-      // for (uint i = 0; i < 100; i++) {
-        // SingleDataSGD(train_feature_mems_[i], train_labels_[i], curr_learning_rate);
-      // }
-    // }
+
+    batch_sgd();
 
     change_weights();
 
