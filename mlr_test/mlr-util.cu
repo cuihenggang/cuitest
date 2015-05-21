@@ -49,8 +49,16 @@ __global__ void SoftmaxAndAdjust_kernel(
   vec[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
 }
 
+__global__ void empty_kernel() {
+
+}
+
 void SoftmaxAndAdjust_gpu(float *vec, const size_t size, uint label) {
   SoftmaxAndAdjust_kernel<<<1, 1>>>(vec, size, label);
+}
+
+void empty_gpu_func() {
+  empty_kernel<<<1, 1>>>();
 }
 
 #endif

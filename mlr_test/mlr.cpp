@@ -48,6 +48,10 @@ void SoftmaxAndAdjust(float *vec, size_t size, uint label) {
   vec[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
 }
 
+#if !defined(CPU_ONLY)
+void empty_gpu_func();
+#endif
+
 class mlr_computer {
  public:
   uint num_compobj_;
@@ -247,6 +251,7 @@ class mlr_computer {
       w_cache = reinterpret_cast<val_t *>(w_cache_mem_->mutable_gpu_data());
       w_delta = reinterpret_cast<val_t *>(w_delta_mem_->mutable_gpu_data());
     }
+    empty_gpu_func();
     tbb::tick_count predict_start = tbb::tick_count::now();
     alloc_mem_time += (predict_start - alloc_mem_start).seconds();
 
@@ -256,6 +261,7 @@ class mlr_computer {
     } else {
       caffe::caffe_gpu_gemv<val_t>(
         CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1, w_cache, feature, 0, y);
+      cudaDeviceSynchronize();
     }
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
     dotproduct_time += (dotproduct_end - predict_start).seconds();
@@ -264,6 +270,7 @@ class mlr_computer {
       SoftmaxAndAdjust(y, num_labels_, label);
     } else {
       SoftmaxAndAdjust_gpu(y, num_labels_, label);
+      cudaDeviceSynchronize();
     }
     tbb::tick_count softmax_end = tbb::tick_count::now();
     softmax_time += (softmax_end - dotproduct_end).seconds();
@@ -283,6 +290,7 @@ class mlr_computer {
       caffe::caffe_gpu_gemm<val_t>(
         CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, 1,
         -learning_rate, y, feature, 1, w_delta);
+      cudaDeviceSynchronize();
     }
     outer_product_time +=
       (tbb::tick_count::now() - softmax_end).seconds();
@@ -292,10 +300,17 @@ class mlr_computer {
     refresh_weights();
     
     val_t curr_learning_rate = learning_rate_ * pow(decay_rate_, cur_clock_);
-    // SingleDataSGD(train_feature_mems_[0], train_labels_[0], curr_learning_rate);
     for (uint i = batch_offset_; i < batch_offset_ + batch_size_; i++) {
       SingleDataSGD(train_feature_mems_[i], train_labels_[i], curr_learning_rate);
     }
+    // for (uint r = 0; r < 2; r++) {
+      // if (r != 0) {
+        // refresh_weights();
+      // }
+      // for (uint i = 0; i < 100; i++) {
+        // SingleDataSGD(train_feature_mems_[i], train_labels_[i], curr_learning_rate);
+      // }
+    // }
 
     change_weights();
 
@@ -305,7 +320,7 @@ class mlr_computer {
 
 int main(int argc, char* argv[]) {
   uint cpu_worker = 0;
-  uint batch_size = 50;
+  uint batch_size = 1000;
   if (argc > 1) {
     cpu_worker = atoi(argv[1]);
   }
@@ -323,7 +338,7 @@ int main(int argc, char* argv[]) {
 
   /* Read data */
   // string data_file = "/proj/BigLearning/hengganc/data/mlr_data/imagenet_llc/imnet.train.50.train";
-  string data_file = "/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.50.train";
+  string data_file = "/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.1000.train";
   computer.read_data(data_file);
   computer.batch_size_ = batch_size;
 
