@@ -157,6 +157,10 @@ class mlr_computer {
       memcpy(reinterpret_cast<void *>(train_feature),
           train_features_tmp[i].data(), feature_dim_ * sizeof(val_t));
     }
+    if (!cpu_worker_) {
+      train_feature_mem_->mutable_gpu_data();
+    }
+
     assert(sizeof(uint) == sizeof(int));
     train_label_mem_ = new SyncedMemory(
         train_labels_tmp.size() * sizeof(uint));
@@ -275,11 +279,13 @@ class mlr_computer {
     alloc_mem_time += (predict_start - alloc_mem_start).seconds();
 
     if (cpu_worker_) {
-      caffe::caffe_cpu_gemv<val_t>(
-        CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_, w_cache, feature_batch, 0, y_batch);
+      caffe::caffe_cpu_gemm<val_t>(
+        CblasNoTrans, CblasTrans, batch_size_, num_labels_, ROW_DATA_SIZE,
+        1, feature_batch, w_cache, 0, y_batch);
     } else {
-      caffe::caffe_gpu_gemv<val_t>(
-        CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_, w_cache, feature_batch, 0, y_batch);
+      caffe::caffe_gpu_gemm<val_t>(
+        CblasNoTrans, CblasTrans, batch_size_, num_labels_, ROW_DATA_SIZE,
+        1, feature_batch, w_cache, 0, y_batch);
       cudaDeviceSynchronize();
     }
     tbb::tick_count dotproduct_end = tbb::tick_count::now();
@@ -297,17 +303,17 @@ class mlr_computer {
     // outer product
     if (cpu_worker_) {
       caffe::caffe_cpu_gemm<val_t>(
-        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
+        CblasTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
         -learning_rate, y_batch, feature_batch, 1, w_cache);
       caffe::caffe_cpu_gemm<val_t>(
-        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
+        CblasTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
         -learning_rate, y_batch, feature_batch, 1, w_delta);
     } else {
       caffe::caffe_gpu_gemm<val_t>(
-        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
+        CblasTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
         -learning_rate, y_batch, feature_batch, 1, w_cache);
       caffe::caffe_gpu_gemm<val_t>(
-        CblasNoTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
+        CblasTrans, CblasNoTrans, num_labels_, ROW_DATA_SIZE, batch_size_,
         -learning_rate, y_batch, feature_batch, 1, w_delta);
       cudaDeviceSynchronize();
     }
