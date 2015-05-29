@@ -1,0 +1,19 @@
+# size = 21504 * 1000 * 4
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 1
+cpu_to_cpu_memcpy_time = 2.10175
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 2
+cpu_to_cpu_memcpy_time = 1.5489
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 4
+cpu_to_cpu_memcpy_time = 1.23643
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 8
+cpu_to_cpu_memcpy_time = 0.735654
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 16
+cpu_to_cpu_memcpy_time = 0.374486
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 32
+cpu_to_cpu_memcpy_time = 0.233177
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 64
+cpu_to_cpu_memcpy_time = 0.12746
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 128
+cpu_to_cpu_memcpy_time = 0.101281
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 256
+cpu_to_cpu_memcpy_time = 0.105937
