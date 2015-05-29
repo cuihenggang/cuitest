@@ -1,4 +1,7 @@
 # size = 21504 * 1000 * 4
+# rounds = 100
+
+# CPU to CPU
 hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 1
 cpu_to_cpu_memcpy_time = 2.10175
 hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 2
@@ -17,3 +20,12 @@ hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 128
 cpu_to_cpu_memcpy_time = 0.101281
 hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 256
 cpu_to_cpu_memcpy_time = 0.105937
+
+# CPU to GPU
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 1
+cpu_to_cpu_memcpy_time = 2.76193
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 2
+cpu_to_cpu_memcpy_time = 2.79393
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 4
+cpu_to_cpu_memcpy_time = 3.18986
+hengganc@h0:~/cuitest/cuda_memcpy_multithread_test$ ./test 8

@@ -35,10 +35,15 @@ static void *thread_run(void *arg) {
   size_t thread_id = static_cast<size_t>((unsigned long)(arg));
   size_t local_size = size / num_threads;
   size_t start = local_size * thread_id;
+  // void *local_cpu_ptr = reinterpret_cast<void *>(&reinterpret_cast<char *>(cpu_ptr)[start]);
+  // void *local_cpu_ptr2 = reinterpret_cast<void *>(&reinterpret_cast<char *>(cpu_ptr2)[start]);
+  // for (size_t r = 0; r < rounds; r++) {
+    // memcpy(local_cpu_ptr2, local_cpu_ptr, local_size);
+  // }
   void *local_cpu_ptr = reinterpret_cast<void *>(&reinterpret_cast<char *>(cpu_ptr)[start]);
-  void *local_cpu_ptr2 = reinterpret_cast<void *>(&reinterpret_cast<char *>(cpu_ptr2)[start]);
+  void *local_gpu_ptr = reinterpret_cast<void *>(&reinterpret_cast<char *>(gpu_ptr)[start]);
   for (size_t r = 0; r < rounds; r++) {
-    memcpy(local_cpu_ptr2, local_cpu_ptr, local_size);
+    cudaMemcpy(local_gpu_ptr, local_cpu_ptr, local_size, cudaMemcpyDefault);
   }
 }
 
