@@ -1,0 +1,8 @@
+# size = 21504 * 1000 * 4
+cpu_malloc_time = 7.1624e-05
+gpu_malloc_time = 1.60875
+cpu_to_gpu_memcpy_time = 0.0284161
+cpu_to_cpu_memcpy_time = 0.0347855
+gpu_to_gpu_memcpy_time = 7.1726e-05
+gpu_to_cpu_memcpy_time = 0.0542943
+
