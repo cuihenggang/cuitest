@@ -1,8 +1,33 @@
 # size = 21504 * 1000 * 4
-cpu_malloc_time = 7.1624e-05
-gpu_malloc_time = 1.60875
-cpu_to_gpu_memcpy_time = 0.0284161
-cpu_to_cpu_memcpy_time = 0.0347855
-gpu_to_gpu_memcpy_time = 7.1726e-05
-gpu_to_cpu_memcpy_time = 0.0542943
+hengganc@h0:~/cuitest/cuda_memcpy_test$ ./test 
+cpu_malloc_time = 2.0505e-05
+gpu_malloc_time = 0.000985935
+cpu_to_gpu_memcpy_time = 0.0434079
+cpu_to_cpu_memcpy_time = 0.0356921
+gpu_to_gpu_memcpy_time = 5.296e-05
+gpu_to_cpu_memcpy_time = 0.0440798
+cpu_add_time = 0.0273067
+cpu_axpy_time = 0.0401039
+gpu_axpy_time = 8.9925e-05
 
+hengganc@h0:~/cuitest/cuda_memcpy_test$ ./test 
+cpu_malloc_time = 0.000443314
+gpu_malloc_time = 0.00104896
+cpu_to_gpu_memcpy_time = 0.0331843
+cpu_to_cpu_memcpy_time = 0.0368166
+gpu_to_gpu_memcpy_time = 5.5135e-05
+gpu_to_cpu_memcpy_time = 0.0337238
+cpu_add_time = 0.027749
+cpu_axpy_time = 0.0399584
+gpu_axpy_time = 9.575e-05
+
+hengganc@h0:~/cuitest/cuda_memcpy_test$ ./test 
+cpu_malloc_time = 6.8598e-05
+gpu_malloc_time = 0.00100786
+cpu_to_gpu_memcpy_time = 0.0434129
+cpu_to_cpu_memcpy_time = 0.0363821
+gpu_to_gpu_memcpy_time = 5.3848e-05
+gpu_to_cpu_memcpy_time = 0.0439047
+cpu_add_time = 0.027405
+cpu_axpy_time = 0.0395336
+gpu_axpy_time = 9.3337e-05
