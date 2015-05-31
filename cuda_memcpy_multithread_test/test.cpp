@@ -40,11 +40,16 @@ static void *thread_run(void *arg) {
   // for (size_t r = 0; r < rounds; r++) {
     // memcpy(local_cpu_ptr2, local_cpu_ptr, local_size);
   // }
+  cudaStream_t stream1;
+  cudaError_t result;
+  result = cudaStreamCreate(&stream1);
   void *local_cpu_ptr = reinterpret_cast<void *>(&reinterpret_cast<char *>(cpu_ptr)[start]);
   void *local_gpu_ptr = reinterpret_cast<void *>(&reinterpret_cast<char *>(gpu_ptr)[start]);
   for (size_t r = 0; r < rounds; r++) {
-    cudaMemcpy(local_gpu_ptr, local_cpu_ptr, local_size, cudaMemcpyDefault);
+    cudaMemcpyAsync(local_gpu_ptr, local_cpu_ptr, local_size, cudaMemcpyDefault, stream1);
   }
+  cudaStreamSynchronize(stream1);
+  result = cudaStreamDestroy(stream1);
 }
 
 int main(int argc, char* argv[]) {
@@ -56,8 +61,10 @@ int main(int argc, char* argv[]) {
   cublasCreate(&cublas_handle);
   tbb::tick_count tick_start;
 
-  cpu_ptr = malloc(size);
-  cpu_ptr2 = malloc(size);
+  // cpu_ptr = malloc(size);
+  // cpu_ptr2 = malloc(size);
+  cudaMallocHost(&cpu_ptr, size);
+  cudaMallocHost(&cpu_ptr2, size);
   cudaMalloc(&gpu_ptr, size);
   cudaMalloc(&gpu_ptr2, size);
 
