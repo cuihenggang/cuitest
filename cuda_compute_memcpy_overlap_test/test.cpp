@@ -41,9 +41,10 @@ void do_memcpy() {
   tbb::tick_count tick_start = tbb::tick_count::now();
   for (size_t r = 0; r < rounds; r++) {
     // cudaMemcpyAsync(gpu_ptr5, gpu_ptr4, size, cudaMemcpyDefault, stream);
-    cudaMemcpyAsync(gpu_ptr5, cpu_ptr2, size, cudaMemcpyDefault, stream);
+    // cudaMemcpyAsync(gpu_ptr5, cpu_ptr2, size, cudaMemcpyDefault, stream);
+    cudaMemcpyAsync(cpu_ptr2, gpu_ptr5, size, cudaMemcpyDefault, stream);
+    cudaStreamSynchronize(stream);
   }
-  cudaStreamSynchronize(stream);
 
   double compute_time = (tbb::tick_count::now() - tick_start).seconds();
   cout << "memcpy_time = " << compute_time << endl;
@@ -70,8 +71,8 @@ void do_compute() {
   for (size_t r = 0; r < 50; r++) {
     cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N,
         N, M, K, &alpha, B, K, A, N, &beta, C, N);
+    cudaStreamSynchronize(stream);
   }
-  cudaStreamSynchronize(stream);
 
   double compute_time = (tbb::tick_count::now() - tick_start).seconds();
   cout << "compute_time = " << compute_time << endl;

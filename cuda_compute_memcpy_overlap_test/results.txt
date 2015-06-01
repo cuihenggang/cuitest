@@ -51,3 +51,29 @@ hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
 memcpy_time = 1.46849
 hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
 compute_time = 2.62153
+
+
+# GPU to CPU, r = 50
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 0
+memcpy_time = 1.69615
+compute_time = 2.60415
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
+memcpy_time = 1.72243
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 2.59769
+
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 0
+memcpy_time = 1.72264
+compute_time = 2.60178
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
+memcpy_time = 1.73325
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 2.59765
+
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 0
+memcpy_time = 1.72497
+compute_time = 2.60439
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
+memcpy_time = 1.72503
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 2.59924
