@@ -1,0 +1,5 @@
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 0.53698
+memcpy_time = 0.657001
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
+compute_time = 0.520425
