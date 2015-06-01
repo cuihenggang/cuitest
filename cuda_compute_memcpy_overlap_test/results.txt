@@ -1,5 +1,53 @@
-hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
-compute_time = 0.53698
-memcpy_time = 0.657001
+## Conclusion:
+memcpy is slowed down, computation is not affected
+
+# GPU to GPU, r = 5
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 0
+compute_time = 0.264717
+memcpy_time = 0.398532
 hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
-compute_time = 0.520425
+memcpy_time = 0.141879
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 0.262584
+
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 0
+compute_time = 0.265358
+memcpy_time = 0.370511
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
+memcpy_time = 0.141907
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 0.260789
+
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 0
+compute_time = 0.267281
+memcpy_time = 0.399592
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
+memcpy_time = 0.141955
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 0.263114
+
+
+# CPU to GPU, r = 50
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 0
+memcpy_time = 1.9223
+compute_time = 2.64253
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
+memcpy_time = 1.46825
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 2.62938
+
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 0
+memcpy_time = 1.90305
+compute_time = 2.63667
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
+memcpy_time = 1.46838
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 2.62101
+
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 0
+memcpy_time = 1.89065
+compute_time = 2.632
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 1
+memcpy_time = 1.46849
+hengganc@h0:~/cuitest/cuda_compute_memcpy_overlap_test$ ./test 2
+compute_time = 2.62153

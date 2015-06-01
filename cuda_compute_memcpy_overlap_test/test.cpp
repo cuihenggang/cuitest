@@ -24,7 +24,7 @@ using std::memcpy;
 
 size_t count = 21504 * 1000;
 size_t size = count * sizeof(float);
-size_t num_threads = 2;
+int mode = 0;
 size_t rounds = 100;
 void *cpu_ptr;
 void *cpu_ptr2;
@@ -40,7 +40,8 @@ void do_memcpy() {
 
   tbb::tick_count tick_start = tbb::tick_count::now();
   for (size_t r = 0; r < rounds; r++) {
-    cudaMemcpyAsync(gpu_ptr5, gpu_ptr4, size, cudaMemcpyDefault, stream);
+    // cudaMemcpyAsync(gpu_ptr5, gpu_ptr4, size, cudaMemcpyDefault, stream);
+    cudaMemcpyAsync(gpu_ptr5, cpu_ptr2, size, cudaMemcpyDefault, stream);
   }
   cudaStreamSynchronize(stream);
 
@@ -66,7 +67,7 @@ void do_compute() {
   int K = 4000;
 
   tbb::tick_count tick_start = tbb::tick_count::now();
-  for (size_t r = 0; r < 10; r++) {
+  for (size_t r = 0; r < 50; r++) {
     cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N,
         N, M, K, &alpha, B, K, A, N, &beta, C, N);
   }
@@ -79,16 +80,23 @@ void do_compute() {
 
 static void *thread_run(void *arg) {
   size_t thread_id = static_cast<size_t>((unsigned long)(arg));
-  if (thread_id == 0) {
+  if (mode == 0 && thread_id == 0) {
     do_compute();
-  } else {
+  }
+  if (mode == 0 && thread_id == 1) {
     do_memcpy();
+  }
+  if (mode == 1 && thread_id == 0) {
+    do_memcpy();
+  }
+  if (mode == 2 && thread_id == 0) {
+    do_compute();
   }
 }
 
 int main(int argc, char* argv[]) {
   if (argc > 1) {
-    num_threads = atoi(argv[1]);
+    mode = atoi(argv[1]);
   }
 
   cublasHandle_t cublas_handle;
@@ -111,6 +119,12 @@ int main(int argc, char* argv[]) {
   cudaMemcpyAsync(gpu_ptr, cpu_ptr, size, cudaMemcpyDefault);
   cudaMemcpyAsync(gpu_ptr2, cpu_ptr, size, cudaMemcpyDefault);
 
+  size_t num_threads;
+  if (mode == 0) {
+    num_threads = 2;
+  } else {
+    num_threads = 1;
+  }
   pthread_t *thread_ids = new pthread_t[num_threads];
   pthread_attr_t thread_attr;
   void *res;
