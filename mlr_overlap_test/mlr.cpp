@@ -37,6 +37,7 @@ using std::istringstream;
 
 typedef uint32_t uint;
 
+int mode;
 size_t count = 21504 * 1000;
 size_t size = count * sizeof(float);
 void *cpu_ptr;
@@ -50,12 +51,24 @@ static void *thread_run(void *arg) {
 
   tbb::tick_count tick_start = tbb::tick_count::now();
   for (size_t r = 0; r < 100; r++) {
-    cudaMemcpyAsync(gpu_ptr2, gpu_ptr, size, cudaMemcpyDefault, stream);
-    cudaStreamSynchronize(stream);
-    cudaMemcpyAsync(gpu_ptr, cpu_ptr, size, cudaMemcpyDefault, stream);
-    cudaStreamSynchronize(stream);
-    cudaMemcpyAsync(cpu_ptr, gpu_ptr2, size, cudaMemcpyDefault, stream);
-    cudaStreamSynchronize(stream);
+    if (mode == 0 || mode == 1) {
+      cudaMemcpyAsync(gpu_ptr2, gpu_ptr, size, cudaMemcpyDefault, stream);
+      cudaStreamSynchronize(stream);
+      cudaMemcpyAsync(gpu_ptr, cpu_ptr, size, cudaMemcpyDefault, stream);
+      cudaStreamSynchronize(stream);
+      cudaMemcpyAsync(cpu_ptr, gpu_ptr2, size, cudaMemcpyDefault, stream);
+      cudaStreamSynchronize(stream);
+    }
+    if (mode == 2) {
+      cudaMemcpyAsync(gpu_ptr2, gpu_ptr, size, cudaMemcpyDefault, stream);
+      cudaStreamSynchronize(stream);
+      memcpy(cpu_ptr2, cpu_ptr, size);
+      cudaMemcpyAsync(gpu_ptr, cpu_ptr2, size, cudaMemcpyDefault, stream);
+      cudaStreamSynchronize(stream);
+      cudaMemcpyAsync(cpu_ptr2, gpu_ptr2, size, cudaMemcpyDefault, stream);
+      cudaStreamSynchronize(stream);
+      memcpy(cpu_ptr, cpu_ptr2, size);
+    }
   }
 
   double compute_time = (tbb::tick_count::now() - tick_start).seconds();
@@ -304,12 +317,17 @@ class mlr_computer {
   }
 
   void compute() {
-    batch_sgd(1);
+    if (batch_size_ > 0) {
+      batch_sgd(1);
+    }
   }
 };
 
 int main(int argc, char* argv[]) {
   uint batch_size = 1000;
+  if (argc > 1) {
+    mode = atoi(argv[1]);
+  }
   if (argc > 2) {
     batch_size = atoi(argv[2]);
   }
@@ -325,8 +343,18 @@ int main(int argc, char* argv[]) {
   /* Set initial values */
   computer.initialize();
 
-  cudaMallocHost(&cpu_ptr, size);
-  cudaMallocHost(&cpu_ptr2, size);
+  if (mode == 0) {
+    cudaMallocHost(&cpu_ptr, size);
+    cudaMallocHost(&cpu_ptr2, size);
+  }
+  if (mode == 1) {
+    cpu_ptr = malloc(size);
+    cpu_ptr2 = malloc(size);
+  }
+  if (mode == 2) {
+    cpu_ptr = malloc(size);
+    cudaMallocHost(&cpu_ptr2, size);
+  }
   cudaMalloc(&gpu_ptr, size);
   cudaMalloc(&gpu_ptr2, size);
   pthread_t thread_id;
