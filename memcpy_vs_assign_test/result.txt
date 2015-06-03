@@ -1,0 +1,25 @@
+# For both cpu and gpu, memcpy_time and assign_time are the same
+# With an index, cpu and gpu are both about 4x slower,
+# but gpu is still significantly faster than cpu
+
+hengganc@h0:~/cuitest/memcpy_vs_assign_test$ ./test 
+cpu_memcpy_time = 0.0245007
+cpu_assign_time = 0.0243375
+gpu_memcpy_time = 3.9216e-05
+gpu_assign_time = 1.0942e-05
+cpu_index_time = 0.0892017
+gpu_index_time = 7.3143e-05
+hengganc@h0:~/cuitest/memcpy_vs_assign_test$ ./test 
+cpu_memcpy_time = 0.0271398
+cpu_assign_time = 0.0270064
+gpu_memcpy_time = 3.77e-05
+gpu_assign_time = 1.0756e-05
+cpu_index_time = 0.0889918
+gpu_index_time = 7.1284e-05
+hengganc@h0:~/cuitest/memcpy_vs_assign_test$ ./test 
+cpu_memcpy_time = 0.0271472
+cpu_assign_time = 0.0269945
+gpu_memcpy_time = 4.0914e-05
+gpu_assign_time = 1.0605e-05
+cpu_index_time = 0.0894611
+gpu_index_time = 7.6409e-05
