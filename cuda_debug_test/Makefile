@@ -1,7 +1,8 @@
-LIBS = -lrt -lcudart
+LIBS = -lrt -lcudart -lglog
 CFLAGS = -g -O3
-INCLUDE_PATH = -I/share/probe/misc/cuda-7.0/include
-LIBPATH = -L/share/probe/misc/cuda-7.0/lib64
+CUDA_HOME = /share/probe/misc/cuda-6.5
+INCLUDE_PATH = -I$(CUDA_HOME)/include
+LIBPATH = -L$(CUDA_HOME)/lib64
 
 all: Makefile test.cu
-	/share/probe/misc/cuda-7.0/bin/nvcc test.cu $(LIBS) -o test $(CFLAGS)
+	$(CUDA_HOME)/bin/nvcc test.cu $(LIBS) -o test $(CFLAGS)

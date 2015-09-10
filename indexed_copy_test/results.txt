@@ -1,0 +1,72 @@
+hengganc@h0:~/cuitest/indexed_cpy_test$ ./test 1000000
+LazyTable allocate GPU data with size 512000000
+LazyTable allocate GPU data with size 512000000
+LazyTable allocate GPU data with size 8000000
+assign_rows_gpu_time = 0.000108897
+cpu_memcpy_time = 0.181177
+assign_rows_cpu_time = 0.168866
+copy_to_gpu_time = 0.166762
+copy_to_gpu_time = 0.127655
+assign_rows_cpu_time = 0.166678
+cpu_memcpy_time = 0.167712
+assign_rows_gpu_time = 4.2059e-05
+hengganc@h0:~/cuitest/indexed_cpy_test$ ./test 1000000
+LazyTable allocate GPU data with size 512000000
+LazyTable allocate GPU data with size 512000000
+LazyTable allocate GPU data with size 8000000
+assign_rows_gpu_time = 0.000121667
+cpu_memcpy_time = 0.181129
+assign_rows_cpu_time = 0.168758
+copy_to_gpu_time = 0.167601
+copy_to_gpu_time = 0.128013
+assign_rows_cpu_time = 0.166931
+cpu_memcpy_time = 0.167365
+assign_rows_gpu_time = 4.0487e-05
+hengganc@h0:~/cuitest/indexed_cpy_test$ ./test 1000000
+LazyTable allocate GPU data with size 512000000
+LazyTable allocate GPU data with size 512000000
+LazyTable allocate GPU data with size 8000000
+assign_rows_gpu_time = 0.000123023
+cpu_memcpy_time = 0.193937
+assign_rows_cpu_time = 0.166801
+copy_to_gpu_time = 0.174024
+copy_to_gpu_time = 0.17384
+assign_rows_cpu_time = 0.166627
+cpu_memcpy_time = 0.166683
+assign_rows_gpu_time = 6.2856e-05
+hengganc@h0:~/cuitest/indexed_cpy_test$ ./test 100000
+LazyTable allocate GPU data with size 51200000
+LazyTable allocate GPU data with size 51200000
+LazyTable allocate GPU data with size 800000
+assign_rows_gpu_time = 6.4055e-05
+cpu_memcpy_time = 0.0191369
+assign_rows_cpu_time = 0.0166016
+copy_to_gpu_time = 0.0174533
+copy_to_gpu_time = 0.0173917
+assign_rows_cpu_time = 0.0165868
+cpu_memcpy_time = 0.0168627
+assign_rows_gpu_time = 6.029e-05
+hengganc@h0:~/cuitest/indexed_cpy_test$ ./test 100000
+LazyTable allocate GPU data with size 51200000
+LazyTable allocate GPU data with size 51200000
+LazyTable allocate GPU data with size 800000
+assign_rows_gpu_time = 6.3452e-05
+cpu_memcpy_time = 0.0191438
+assign_rows_cpu_time = 0.0166071
+copy_to_gpu_time = 0.0174534
+copy_to_gpu_time = 0.0173958
+assign_rows_cpu_time = 0.0165941
+cpu_memcpy_time = 0.0168438
+assign_rows_gpu_time = 6.079e-05
+hengganc@h0:~/cuitest/indexed_cpy_test$ ./test 100000
+LazyTable allocate GPU data with size 51200000
+LazyTable allocate GPU data with size 51200000
+LazyTable allocate GPU data with size 800000
+assign_rows_gpu_time = 6.4253e-05
+cpu_memcpy_time = 0.019095
+assign_rows_cpu_time = 0.0166129
+copy_to_gpu_time = 0.0174556
+copy_to_gpu_time = 0.0173953
+assign_rows_cpu_time = 0.0165664
+cpu_memcpy_time = 0.0168562
+assign_rows_gpu_time = 6.0388e-05
