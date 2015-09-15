@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
 
   tick_start = tbb::tick_count::now();
   assign_rows_to_double_index_gpu(
-        cpu_buffer_rows, src_gpu_rows, index_gpu_data, count,
+        dst_gpu_rows, src_gpu_rows, index_gpu_data, count,
         0, ROW_DATA_SIZE, count * ROW_DATA_SIZE, cuda_stream);
   double assign_rows_gpu_time = (tbb::tick_count::now() - tick_start).seconds();
   cout << "assign_rows_gpu_time = " << assign_rows_gpu_time << endl;
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
 
   tick_start = tbb::tick_count::now();
   assign_rows_to_double_index_gpu(
-        cpu_buffer_rows, src_gpu_rows, index_gpu_data, count,
+        dst_gpu_rows, src_gpu_rows, index_gpu_data, count,
         0, ROW_DATA_SIZE, count * ROW_DATA_SIZE, cuda_stream);
   assign_rows_gpu_time = (tbb::tick_count::now() - tick_start).seconds();
   cout << "assign_rows_gpu_time = " << assign_rows_gpu_time << endl;
