@@ -16,7 +16,7 @@
 using namespace std;
 
 int main() {
-  size_t count = 200 * 1000 * 1000;
+  size_t count = 1000 * 1000;
   size_t size = count * sizeof(float);
   void *arrays[10];
   for (size_t i = 0; i < 10; i++) {
@@ -38,5 +38,4 @@ int main() {
       cout << "sum" << j << "=" << sum << endl;
     }
   }
-  cout << "sum" << "=" << sum << endl;
 }
