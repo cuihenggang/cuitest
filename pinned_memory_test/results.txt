@@ -1,0 +1,3 @@
+malloc: 136 * 10^9 bytes
+
+cudaMallocHost: 4 * 10^9 bytes
