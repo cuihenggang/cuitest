@@ -1,0 +1,5 @@
+# 512 MB send + 512 MB recv
+# 10 rounds
+hengganc@h0:~/cuitest/gdr_test$ export MV2_CPU_MAPPING=0 && export MV2_USE_CUDA=1 && export MV2_USE_GPUDIRECT=1 && export MV2_GPUDIRECT_GDRCOPY_LIB=/opt/mvapich2/gdr/2.1/cuda7.5/gnu/gdrcopy-master/libgdrapi.so && /opt/mvapich2/gdr/2.1/cuda7.5/gnu/bin/mpirun_rsh -export -np 2 h0-dib h1-dib ./test
+time = 4.17312
+time = 4.17337
