@@ -26,6 +26,10 @@ using namespace std;
 int main() {
   cout << "CUDA_ARCH = " << CUDA_ARCH << endl;
 
+  int driverVersion;
+  CUDA_CHECK(cudaDriverGetVersion(&driverVersion));
+  cout << "driverVersion = " << driverVersion << endl;	
+
   cudaDeviceProp deviceProp;
   int devID = 0;
   CUDA_CHECK(cudaGetDeviceProperties(&deviceProp, devID));
