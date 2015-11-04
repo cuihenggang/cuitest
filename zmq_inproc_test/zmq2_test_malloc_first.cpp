@@ -23,8 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "zmq.h"
-#include "zmq_utils.h"
+#include "../include/zmq.h"
+#include "../include/zmq_utils.h"
 
 #define INPROC  0
 #define TCP     1
@@ -43,6 +43,14 @@ static void *pusher_and_puller(void *config) {
   int no_of_messages = ((config_t *)config)->no_of_messages;
   int message_size = ((config_t *)config)->message_size;
 
+  // Queue up some data
+  void *message = malloc(message_size);
+  zmq_msg_t *msgs = (zmq_msg_t *)malloc(sizeof(zmq_msg_t) * no_of_messages);
+  for (int i = 0; i < no_of_messages; i ++) {
+    zmq_msg_init_size(&msgs[i], message_size);
+    memcpy(zmq_msg_data(&msgs[i]), message, message_size);
+  }
+
   // Connect first
   void *push_socket = zmq_socket(ctx, ZMQ_PUSH);
   void *pull_socket = zmq_socket(ctx, ZMQ_PULL);
@@ -57,18 +65,12 @@ static void *pusher_and_puller(void *config) {
     rc = zmq_connect(pull_socket, "tcp://127.0.0.1:9091");
   }
   assert(rc == 0);
-  
-  // Queue up some data
-  void * message = malloc(message_size);
-  
+
   void *stopwatch = zmq_stopwatch_start();
   for (int i = 0; i < no_of_messages; i ++) {
-    zmq_msg_t msg;
-    rc = zmq_msg_init_size(&msg, message_size);
-    memcpy(zmq_msg_data(&msg), message, message_size);
-    rc = zmq_send(push_socket, &msg, 0);
-    rc = zmq_msg_init(&msg);
-    rc = zmq_recv(pull_socket, &msg, 0);
+    rc = zmq_send(push_socket, &msgs[i], 0);
+    rc = zmq_msg_init(&msgs[i]);
+    rc = zmq_recv(pull_socket, &msgs[i], 0);
   }
   unsigned long elapsed = zmq_stopwatch_stop(stopwatch);
   printf("sender time elapsed = %f\n", (double)elapsed / 1e6);
@@ -120,8 +122,6 @@ void test_latency(int conn_type,
   }
   assert(rc == 0);
   
-  void *stopwatch = zmq_stopwatch_start();
-  
   for (unsigned int i = 0; i < no_of_threads * no_of_messages; ++i) {
     // Read pending message
     zmq_msg_t msg;
@@ -129,9 +129,6 @@ void test_latency(int conn_type,
     rc = zmq_recv(pull_socket, &msg, 0);
     rc = zmq_send(push_socket, &msg, 0);
   }
-  
-  unsigned long elapsed = zmq_stopwatch_stop(stopwatch);
-  printf("receiver time elapsed = %f\n", (double)elapsed / 1e6);
 
   // Cleanup
   for (unsigned int i = 0; i < no_of_threads; ++i) {
@@ -167,21 +164,29 @@ static void *pusher(void *config) {
   assert(rc == 0);
   
   // Queue up some data
-  void * message = malloc(message_size);
+  void *message = malloc(message_size);
+  zmq_msg_t *msgs = (zmq_msg_t *)malloc(sizeof(zmq_msg_t) * no_of_messages);
+  for (int i = 0; i < no_of_messages; i ++) {
+    zmq_msg_init_size(&msgs[i], message_size);
+    memcpy(zmq_msg_data(&msgs[i]), message, message_size);
+  }
   
   void *stopwatch = zmq_stopwatch_start();
   for (int i = 0; i < no_of_messages; i ++) {
-    zmq_msg_t msg;
-    rc = zmq_msg_init_size(&msg, message_size);
-    memcpy(zmq_msg_data(&msg), message, message_size);
-    rc = zmq_send(connectSocket, &msg, 0);
+    // zmq_msg_t msg;
+    // rc = zmq_msg_init_size(&msg, message_size);
+    // memcpy(zmq_msg_data(&msg), message, message_size);
+    rc = zmq_send(connectSocket, &msgs[i], 0);
   }
   unsigned long elapsed = zmq_stopwatch_stop(stopwatch);
   printf("sender time elapsed = %f\n", (double)elapsed / 1e6);
   
-  free(message);
-  
   // Cleanup
+  for (int i = 0; i < no_of_messages; i ++) {
+    zmq_msg_close(&msgs[i]);
+  }
+  free(msgs);
+  free(message);
   rc = zmq_close(connectSocket);
   assert(rc == 0);
   
@@ -221,19 +226,17 @@ void test_throughput(int conn_type,
   }
   assert(rc == 0);
   
+  zmq_msg_t msg;
+  rc = zmq_msg_init(&msg);
+  rc = zmq_recv(bindSocket, &msg, 0);
+  // Start timing after receiving the first message
   void *stopwatch = zmq_stopwatch_start();
-  
-  for (unsigned int i = 0; i < no_of_threads * no_of_messages; ++i) {
+  for (unsigned int i = 0; i < no_of_threads * no_of_messages - 1; ++i) {
     // Read pending message
     zmq_msg_t msg;
     rc = zmq_msg_init(&msg);
-    // assert (rc == 0);
     rc = zmq_recv(bindSocket, &msg, 0);
-    // assert (rc == 6);
-    // void *data = zmq_msg_data (&msg);
-    // assert (memcmp ("foobar", data, message_size) == 0);
   }
-  
   unsigned long elapsed = zmq_stopwatch_stop(stopwatch);
   printf("receiver time elapsed = %f\n", (double)elapsed / 1e6);
 

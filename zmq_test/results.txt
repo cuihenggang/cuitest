@@ -1,0 +1,5 @@
+hengganc@h1:~/cuitest/zmq_test$ make run
+mpirun -machinefile hostlist ./test 1 10 536870912
+pusher_and_puller time elapsed = 8.891863
+puller_and_pusher time elapsed = 8.891958
+

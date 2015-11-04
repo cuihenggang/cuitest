@@ -23,8 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "zmq.h"
-#include "zmq_utils.h"
+#include "../include/zmq.h"
+#include "../include/zmq_utils.h"
 
 #define INPROC  0
 #define TCP     1

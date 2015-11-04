@@ -27,7 +27,15 @@ int main (int argc, char *argv[])
   char *s_buf;
   char *r_buf;
 
-  MPI_Init(&argc, &argv);
+  // MPI_Init(&argc, &argv);
+  int provide_level;
+  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provide_level);
+  if (provide_level < MPI_THREAD_MULTIPLE){
+      std::cerr
+        << "Error: the MPI library doesn't provide the required thread level"
+        << endl;
+      MPI_Abort(MPI_COMM_WORLD,0);
+  }
   MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
