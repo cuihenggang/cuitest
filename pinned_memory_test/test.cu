@@ -41,20 +41,21 @@ int main() {
     exit(0);
   }
 
-  size_t count = 1024;
+  size_t count = 0;
   size_t size = 64 * 1024 * 1024 * sizeof(float);
-  // size_t count = 1000;
-  // size_t size = 100 * 1000 * 1000 * sizeof(float);
-  for (size_t i = 0; i < count; i++) {
-    cout << "allocated " << i * 256 << " MB" << endl;
-    // cout << i << endl;
+  while (true) {
     void *host_array;
-    // cudaMallocHost(&host_array, size);
-    CUDA_CHECK(cudaMallocHost(&host_array, size));
-    memset(host_array, 0, size);
-    // CUDA_CHECK(cudaHostAlloc(&host_array, size, cudaHostAllocMapped));
-    // CUDA_CHECK(cudaMalloc(&host_array, size));
-    // CHECK(host_array = malloc(size));
-    // CHECK_EQ(mlock(host_array, size), 0);
+    if (cudaMallocHost(&host_array, size) == cudaSuccess) {
+      // memset(host_array, 0, size);
+      count++;
+      cout << "Allocated " << count * 256 << " MB" << endl;
+    } else {
+      cout << "Allocation failed at " << count * 256 << " MB" << endl;
+    }
   }
+
+  // CUDA_CHECK(cudaHostAlloc(&host_array, size, cudaHostAllocMapped));
+  // CUDA_CHECK(cudaMalloc(&host_array, size));
+  // CHECK(host_array = malloc(size));
+  // CHECK_EQ(mlock(host_array, size), 0);
 }

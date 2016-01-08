@@ -23,13 +23,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <iostream>
+
 #include <zmq.h>
 #include <zmq_utils.h>
 
 #include <mpi.h>
 
-#define INPROC  0
-#define TCP     1
+using namespace std;
 
 struct config_t {
   void *ctx;
@@ -124,10 +125,11 @@ int main (int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &proc_id);
+  cout << "proc " << proc_id << endl;
 
   int test_type = argc > 1 ? atoi(argv[1]) : 0;
-  int no_of_messages = argc > 2 ? atoi(argv[2]) : 10000;
-  int message_size = argc > 3 ? atoi(argv[3]) : 400;
+  int no_of_messages = argc > 2 ? atoi(argv[2]) : 10;
+  int message_size = argc > 3 ? atoi(argv[3]) : 1 << 29;
 
   test_latency(proc_id, no_of_messages, message_size);
 
