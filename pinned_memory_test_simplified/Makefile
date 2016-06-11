@@ -1,4 +1,4 @@
-LIBS = -lrt -lglog -lcudart
+LIBS = -lrt -lcudart
 CFLAGS = -g -O3
 CUDA_HOME = /usr/local/cuda
 INCLUDE_PATH = -I$(CUDA_HOME)/include
