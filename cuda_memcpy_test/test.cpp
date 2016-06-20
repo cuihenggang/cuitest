@@ -32,7 +32,8 @@ int main(int argc, char* argv[]) {
   tbb::tick_count tick_start;
 
   tick_start = tbb::tick_count::now();
-  cpu_ptr = malloc(size);
+  // cpu_ptr = malloc(size);
+  cudaMallocHost(&cpu_ptr, size);
   float *cpu_float_ptr = reinterpret_cast<float *>(cpu_ptr);
   double cpu_malloc_time = (tbb::tick_count::now() - tick_start).seconds();
 
@@ -49,7 +50,8 @@ int main(int argc, char* argv[]) {
   cudaMemcpy(gpu_ptr, cpu_ptr, size, cudaMemcpyDefault);
   double cpu_to_gpu_memcpy_time = (tbb::tick_count::now() - tick_start).seconds();
 
-  cpu_ptr2 = malloc(size);
+  // cpu_ptr2 = malloc(size);
+  cudaMallocHost(&cpu_ptr2, size);
   float *cpu_float_ptr2 = reinterpret_cast<float *>(cpu_ptr2);
   tick_start = tbb::tick_count::now();
   memcpy(cpu_ptr2, cpu_ptr, size);

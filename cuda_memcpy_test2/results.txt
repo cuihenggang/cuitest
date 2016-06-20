@@ -1,0 +1,18 @@
+$ ./test 
+3996 MB memory CPU->GPU copied in 0.716978
+7996 MB memory CPU->GPU copied in 1.4342
+11996 MB memory CPU->GPU copied in 2.15192
+15996 MB memory CPU->GPU copied in 2.86887
+19996 MB memory CPU->GPU copied in 3.58576
+23996 MB memory CPU->GPU copied in 4.30262
+27996 MB memory CPU->GPU copied in 5.01964
+31996 MB memory CPU->GPU copied in 5.73647
+35996 MB memory CPU->GPU copied in 6.45337
+39996 MB memory CPU->GPU copied in 7.17035
+43996 MB memory CPU->GPU copied in 7.88733
+47996 MB memory CPU->GPU copied in 8.60425
+51996 MB memory CPU->GPU copied in 9.32127
+55996 MB memory CPU->GPU copied in 10.0381
+59996 MB memory CPU->GPU copied in 10.7551
+63996 MB memory CPU->GPU copied in 11.4721
+67996 MB memory CPU->GPU copied in 12.1889
