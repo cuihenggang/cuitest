@@ -3,12 +3,13 @@
 #include <cstring>    // for memcpy
 #include <vector>
 
+#include <numa.h>
+#include <numaif.h>
+
 #include <tbb/tick_count.h>
 
-#include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <driver_types.h>
 
 using std::vector;
 using std::string;
@@ -23,6 +24,14 @@ void *cpu_ptr2;
 void *gpu_ptr;
 void *gpu_ptr2;
 
+void set_mem_affinity(uint node_id) {
+  struct bitmask *mask = numa_allocate_nodemask();
+  mask = numa_bitmask_setbit(mask, node_id);
+  numa_set_bind_policy(1); /* set NUMA zone binding to be strict */
+  numa_set_membind(mask);
+  numa_free_nodemask(mask);
+}
+
 static void *thread_run(void *arg) {
   size_t thread_id = static_cast<size_t>((unsigned long)(arg));
   // void *local_cpu_ptr = reinterpret_cast<void *>(&reinterpret_cast<char *>(cpu_ptr)[start]);
@@ -34,18 +43,22 @@ static void *thread_run(void *arg) {
   cudaError_t result;
   result = cudaStreamCreate(&stream);
   tbb::tick_count tick_start = tbb::tick_count::now();
+  double last_time = 0.0;
   for (size_t r = 0; r < rounds; r++) {
     if (thread_id == 0) {
       cudaMemcpyAsync(gpu_ptr, cpu_ptr, size, cudaMemcpyDefault, stream);
       cudaStreamSynchronize(stream);
-      if ((r + 1) % 1000 == 0) {
-        cout << 4 * r << " MB memory CPU->GPU copied in "
-           << (tbb::tick_count::now() - tick_start).seconds() << endl;
+      if ((r + 1) % 1024 == 0) {
+        double time = (tbb::tick_count::now() - tick_start).seconds();
+        double bandwidth = 4 / (time - last_time);
+        double ave_bandwidth = 4 * (r + 1) / 1024 / time;
+        cout << 4 * r << " MB memory CPU->GPU copied in " << time << ", bandwidth = " << bandwidth << ", ave_bandwidth = " << ave_bandwidth << endl;
+        last_time = time;
       }
     } else {
       cudaMemcpyAsync(cpu_ptr2, gpu_ptr2, size, cudaMemcpyDefault, stream);
       cudaStreamSynchronize(stream);
-      if ((r + 1) % 1000 == 0) {
+      if ((r + 1) % 1024 == 0) {
         cout << 4 * r << " MB memory GPU->CPU copied in "
             << (tbb::tick_count::now() - tick_start).seconds() << endl;
       }
@@ -55,6 +68,10 @@ static void *thread_run(void *arg) {
 }
 
 int main(int argc, char* argv[]) {
+  int numa_node_id = atoi(argv[1]);
+  if (numa_node_id >= 0) {
+    set_mem_affinity(numa_node_id);
+  }
   cudaMallocHost(&cpu_ptr, size);
   cudaMallocHost(&cpu_ptr2, size);
   cudaMalloc(&gpu_ptr, size);
