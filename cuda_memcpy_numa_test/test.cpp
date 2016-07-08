@@ -3,6 +3,8 @@
 #include <cstring>    // for memcpy
 #include <vector>
 
+#include <glog/logging.h>
+
 #include <numa.h>
 #include <numaif.h>
 
@@ -24,12 +26,23 @@ void *cpu_ptr2;
 void *gpu_ptr;
 void *gpu_ptr2;
 
-void set_mem_affinity(uint node_id) {
-  struct bitmask *mask = numa_allocate_nodemask();
+inline void *set_mem_affinity(int node_id) {
+  bitmask *old_mask = numa_get_membind();
+  CHECK(old_mask);
+  bitmask *mask = numa_allocate_nodemask();
+  CHECK(mask);
   mask = numa_bitmask_setbit(mask, node_id);
-  numa_set_bind_policy(1); /* set NUMA zone binding to be strict */
+  numa_set_bind_policy(1); /* set NUMA zone binding to be "strict" */
   numa_set_membind(mask);
   numa_free_nodemask(mask);
+  return reinterpret_cast<void *>(old_mask);
+}
+
+inline void restore_mem_affinity(void *mask_opaque) {
+  bitmask *mask = reinterpret_cast<bitmask *>(mask_opaque);
+  CHECK(mask);
+  numa_set_bind_policy(0); /* set NUMA zone binding to be "preferred" */
+  numa_set_membind(mask);
 }
 
 static void *thread_run(void *arg) {
@@ -69,13 +82,25 @@ static void *thread_run(void *arg) {
 
 int main(int argc, char* argv[]) {
   int numa_node_id = atoi(argv[1]);
+  void *opaque;
   if (numa_node_id >= 0) {
-    set_mem_affinity(numa_node_id);
+    opaque = set_mem_affinity(numa_node_id);
+    restore_mem_affinity(opaque);
+    opaque = set_mem_affinity(numa_node_id);
+    restore_mem_affinity(opaque);
+    opaque = set_mem_affinity(numa_node_id);
+    restore_mem_affinity(opaque);
+    opaque = set_mem_affinity(numa_node_id);
+    restore_mem_affinity(opaque);
+    opaque = set_mem_affinity(numa_node_id);
   }
   cudaMallocHost(&cpu_ptr, size);
   cudaMallocHost(&cpu_ptr2, size);
   cudaMalloc(&gpu_ptr, size);
   cudaMalloc(&gpu_ptr2, size);
+  if (numa_node_id >= 0) {
+    restore_mem_affinity(opaque);
+  }
 
   thread_run(static_cast<size_t>(0));
 }
